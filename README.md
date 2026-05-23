@@ -121,13 +121,15 @@ pi install git:github.com/lmilojevicc/pi-zentui
 
 ## Config
 
-On first run, Zentui creates a config file at:
+Zentui uses built-in defaults when no config file exists. User settings live at:
 
 ```
 ~/.pi/agent/zentui.json
 ```
 
-### Default config
+Zentui treats this file as user-owned and compatibility-sensitive: invalid known values fall back to runtime defaults, unknown keys are ignored at runtime, and `/zentui` patches only the settings it changes instead of rewriting the whole file.
+
+### Runtime defaults
 
 ```json
 {

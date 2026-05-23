@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { isSupportedColorSpec } from "./style";
 
 export type ColorSpec = string;
 export type ColorSource = "theme" | "terminal";
@@ -84,6 +85,22 @@ export const defaultConfig: PolishedTuiConfig = {
 	},
 };
 
+const iconKeys = [
+	"cwd",
+	"git",
+	"ahead",
+	"behind",
+	"diverged",
+	"conflicted",
+	"untracked",
+	"stashed",
+	"modified",
+	"staged",
+	"renamed",
+	"deleted",
+	"typechanged",
+] as const satisfies readonly (keyof PolishedTuiConfig["icons"])[];
+
 type ConfigRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is ConfigRecord {
@@ -107,6 +124,11 @@ function stringValue(record: Record<string, unknown>, key: string): string | und
 	return typeof value === "string" ? value : undefined;
 }
 
+function colorValue(record: Record<string, unknown>, key: string): string | undefined {
+	const value = stringValue(record, key);
+	return value !== undefined && isSupportedColorSpec(value) ? value : undefined;
+}
+
 function colorSourceValue(
 	record: Record<string, unknown>,
 	key: keyof ColorSourcesConfig,
@@ -125,18 +147,27 @@ function definedColors(
 	) as Partial<PolishedTuiConfig["colors"]>;
 }
 
+function normalizeIcons(record: Record<string, unknown>): Partial<PolishedTuiConfig["icons"]> {
+	return Object.fromEntries(
+		iconKeys.flatMap((key) => {
+			const value = stringValue(record, key);
+			return value === undefined ? [] : [[key, value]];
+		}),
+	) as Partial<PolishedTuiConfig["icons"]>;
+}
+
 function normalizeColors(record: Record<string, unknown>): Partial<PolishedTuiConfig["colors"]> {
 	return definedColors({
-		cwd: stringValue(record, "cwd") ?? stringValue(record, "cwdText"),
-		gitBranch: stringValue(record, "gitBranch") ?? stringValue(record, "git"),
-		gitStatus: stringValue(record, "gitStatus"),
-		contextNormal: stringValue(record, "contextNormal"),
-		contextWarning: stringValue(record, "contextWarning"),
-		contextError: stringValue(record, "contextError"),
-		tokens: stringValue(record, "tokens"),
-		cost: stringValue(record, "cost"),
-		separator: stringValue(record, "separator"),
-		runtimePrefix: stringValue(record, "runtimePrefix"),
+		cwd: colorValue(record, "cwd") ?? colorValue(record, "cwdText"),
+		gitBranch: colorValue(record, "gitBranch") ?? colorValue(record, "git"),
+		gitStatus: colorValue(record, "gitStatus"),
+		contextNormal: colorValue(record, "contextNormal"),
+		contextWarning: colorValue(record, "contextWarning"),
+		contextError: colorValue(record, "contextError"),
+		tokens: colorValue(record, "tokens"),
+		cost: colorValue(record, "cost"),
+		separator: colorValue(record, "separator"),
+		runtimePrefix: colorValue(record, "runtimePrefix"),
 	});
 }
 
@@ -172,18 +203,17 @@ function readConfigRecord(path = configPath): ConfigRecord {
 }
 
 export function ensureConfigExists(): void {
-	try {
-		if (!existsSync(configPath)) {
-			writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`, "utf8");
-		}
-	} catch {
-		// Ignore config bootstrap failures; extension will fall back to defaults.
-	}
+	// Intentionally left as a no-op. Zentui config is user-owned and
+	// compatibility-sensitive: runtime defaults come from `mergeConfig({})`, and
+	// the extension should not persist opinionated defaults unless the user
+	// explicitly changes a setting.
 }
 
 export function mergeConfig(parsed: unknown): PolishedTuiConfig {
 	const config = isRecord(parsed) ? parsed : {};
-	const icons = isRecord(config.icons) ? (config.icons as Partial<PolishedTuiConfig["icons"]>) : {};
+	const icons = isRecord(config.icons)
+		? normalizeIcons(config.icons as Record<string, unknown>)
+		: {};
 	const colors = isRecord(config.colors)
 		? normalizeColors(config.colors as Record<string, unknown>)
 		: {};
@@ -200,16 +230,16 @@ export function mergeConfig(parsed: unknown): PolishedTuiConfig {
 			...defaultConfig.colors,
 			...colors,
 		},
-		colorSources,
+		colorSources: { ...colorSources },
 	};
 }
 
 export function loadConfig(): PolishedTuiConfig {
 	try {
-		if (!existsSync(configPath)) return defaultConfig;
+		if (!existsSync(configPath)) return mergeConfig({});
 		return mergeConfig(JSON.parse(readFileSync(configPath, "utf8")));
 	} catch {
-		return defaultConfig;
+		return mergeConfig({});
 	}
 }
 
@@ -219,10 +249,9 @@ export function saveColorSourcesPatch(
 ): PolishedTuiConfig {
 	const record = readConfigRecord(path);
 	const existing = isRecord(record.colorSources)
-		? validColorSourceEntries(record.colorSources as Record<string, unknown>)
+		? { ...(record.colorSources as Record<string, unknown>) }
 		: {};
 	record.colorSources = {
-		...defaultConfig.colorSources,
 		...existing,
 		...validColorSourceEntries(patch),
 	};

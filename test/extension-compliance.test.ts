@@ -9,9 +9,12 @@ import {
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { afterEach, describe, expect, it } from "vitest";
 import { type PolishedTuiConfig, defaultConfig } from "../extensions/zentui/config";
+import { installFooter } from "../extensions/zentui/footer";
+import { emptyGitStatus } from "../extensions/zentui/git";
 import zentui from "../extensions/zentui/index";
 import { patchSelectorBorderStyle } from "../extensions/zentui/selector-border";
 import { registerZentuiSettingsCommand } from "../extensions/zentui/settings-command";
+import { createInitialState } from "../extensions/zentui/state";
 import { PolishedEditor } from "../extensions/zentui/ui";
 import { installUserMessageStyle } from "../extensions/zentui/user-message";
 
@@ -67,6 +70,56 @@ function makeTaggedTheme(prefix = ""): Theme {
 		},
 		getThinkingBorderColor(level: string) {
 			return (text: string) => `[${prefix}thinking:${level}]${text}`;
+		},
+	} as unknown as Theme;
+}
+
+function makeStrictTheme(): Theme {
+	const knownColors = new Set([
+		"accent",
+		"border",
+		"borderMuted",
+		"error",
+		"mdCode",
+		"mdCodeBlock",
+		"mdCodeBlockBorder",
+		"mdHeading",
+		"mdHr",
+		"mdLink",
+		"mdLinkUrl",
+		"mdListBullet",
+		"mdQuote",
+		"mdQuoteBorder",
+		"muted",
+		"success",
+		"syntaxFunction",
+		"syntaxKeyword",
+		"text",
+		"userMessageText",
+		"warning",
+	]);
+
+	return {
+		fg(color: string, text: string) {
+			if (!knownColors.has(color)) {
+				throw new Error(`Unknown theme color: ${color}`);
+			}
+			return `[${color}]${text}`;
+		},
+		bold(text: string) {
+			return `[bold]${text}`;
+		},
+		italic(text: string) {
+			return text;
+		},
+		underline(text: string) {
+			return text;
+		},
+		strikethrough(text: string) {
+			return text;
+		},
+		getThinkingBorderColor() {
+			return (text: string) => text;
 		},
 	} as unknown as Theme;
 }
@@ -398,6 +451,70 @@ describe("Pi docs compliance", () => {
 		await emit(handlers, "session_shutdown", ctx);
 	});
 
+	it("does not crash when config colors contain Starship modifiers", () => {
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			ui: {
+				theme: makeStrictTheme(),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+				setEditorComponent() {},
+			},
+		});
+		const state = createInitialState(emptyGitStatus());
+		state.contextLabel = "1%/200k";
+		state.tokenLabel = "↑1 ↓2";
+		state.costLabel = "$0.001";
+
+		installFooter(ctx as never, state, () => defaultConfig, {
+			setRequestRender() {},
+			scheduleProjectRefresh() {},
+		});
+
+		const footer = footerFactory?.({ requestRender() {} }, makeStrictTheme(), {
+			onBranchChange: () => () => {},
+		});
+
+		expect(() => footer?.render(120)).not.toThrow();
+		expect(footer?.render(120).join("\n")).toContain("[muted]");
+	});
+
+	it("does not leave an extra branch gap when the git icon is empty", () => {
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			ui: {
+				theme: makeTheme(),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+				setEditorComponent() {},
+			},
+		});
+		const state = createInitialState(emptyGitStatus());
+		state.branch = "main";
+		state.contextLabel = "1%/200k";
+		state.tokenLabel = "↑1 ↓2";
+		state.costLabel = "$0.001";
+		const config: PolishedTuiConfig = {
+			...defaultConfig,
+			icons: { ...defaultConfig.icons, git: "" },
+		};
+
+		installFooter(ctx as never, state, () => config, {
+			setRequestRender() {},
+			scheduleProjectRefresh() {},
+		});
+
+		const footer = footerFactory?.({ requestRender() {} }, makeTheme(), {
+			onBranchChange: () => () => {},
+		});
+		const rendered = footer?.render(120).join("\n") ?? "";
+
+		expect(rendered).toContain("on main");
+		expect(rendered).not.toContain("on  main");
+	});
+
 	it("keeps custom editor output within the requested render width", () => {
 		const editor = new PolishedEditor(
 			{ requestRender() {}, terminal: { rows: 24, cols: 80 } } as never,
@@ -542,6 +659,46 @@ describe("Pi docs compliance", () => {
 		expect(terminalLines[0]).toContain("\u001b[90m────");
 		expect(terminalLines.at(-1)).toContain("\u001b[90m────");
 		expect(terminalLines.every((line) => visibleWidth(stripPromptMarks(line)) <= 40)).toBe(true);
+	});
+
+	it("renders Zentui settings without using invalid theme color tokens", async () => {
+		let command: { handler: (args: string, ctx: unknown) => Promise<void> } | undefined;
+
+		registerZentuiSettingsCommand(
+			{
+				registerCommand(_name: string, options: unknown) {
+					command = options as typeof command;
+				},
+			} as never,
+			{
+				getConfig: () => defaultConfig,
+				setColorSources() {},
+				requestRender() {},
+				settingsListTheme: {
+					label: (text) => text,
+					value: (text) => text,
+					description: (text) => text,
+					cursor: "> ",
+					hint: (text) => text,
+				},
+			},
+		);
+
+		await expect(
+			command?.handler("", {
+				hasUI: true,
+				ui: {
+					theme: makeStrictTheme(),
+					notify() {},
+					async custom(factory: (...args: unknown[]) => unknown) {
+						const component = factory({ requestRender() {} }, makeStrictTheme(), {}, () => {}) as {
+							render?: (width: number) => string[];
+						};
+						component.render?.(40);
+					},
+				},
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	it("keeps the Zentui settings command open after applying a change", async () => {

@@ -7,7 +7,7 @@ import {
 	visibleWidth,
 } from "@earendil-works/pi-tui";
 import type { PolishedTuiConfig } from "./config";
-import { EDITOR_BORDER_STYLE, renderAccentLine, renderChromeBorder } from "./style";
+import { EDITOR_BORDER_STYLE, renderAccentLine, renderChromeBorder, safeThemeFg } from "./style";
 
 type AutocompleteEditorInternals = {
 	autocompleteList?: Pick<Component, "render">;
@@ -36,7 +36,7 @@ export class PolishedEditor extends CustomEditor {
 		getThinkingLevel: () => string | undefined,
 	) {
 		super(tui, theme, keybindings, { paddingX: 0 });
-		this.borderColor = (text: string) => uiTheme.fg("border", text);
+		this.borderColor = (text: string) => safeThemeFg(uiTheme, "border", text);
 		this.uiTheme = uiTheme;
 		this.getConfig = getConfig;
 		this.getModelMeta = getModelMeta;
@@ -88,9 +88,9 @@ export class PolishedEditor extends CustomEditor {
 		const metaParts = [this.getModelMeta()];
 		const thinkingLevel = this.getThinkingLevel();
 		if (thinkingLevel && thinkingLevel !== "off") {
-			metaParts.push(this.uiTheme.fg("muted", thinkingLevel));
+			metaParts.push(safeThemeFg(this.uiTheme, "muted", thinkingLevel));
 		}
-		const meta = metaParts.filter(Boolean).join(this.uiTheme.fg("border", "  "));
+		const meta = metaParts.filter(Boolean).join(safeThemeFg(this.uiTheme, "border", "  "));
 
 		const colorSource = this.getConfig().colorSources.editor;
 		const rail = `${renderAccentLine(this.uiTheme, colorSource, "│")}${this.reset} `;

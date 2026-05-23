@@ -7,7 +7,7 @@ import {
 	truncateToWidth,
 } from "@earendil-works/pi-tui";
 import type { ColorSource, ColorSourcesConfig, PolishedTuiConfig } from "./config";
-import { EDITOR_BORDER_STYLE, renderChromeBorder } from "./style";
+import { EDITOR_BORDER_STYLE, renderChromeBorder, safeThemeFg } from "./style";
 
 const colorSourceValues: ColorSource[] = ["theme", "terminal"];
 
@@ -97,8 +97,8 @@ export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCo
 							EDITOR_BORDER_STYLE,
 							"─".repeat(Math.max(0, width)),
 						);
-						const header = theme.fg("accent", theme.bold("Zentui settings"));
-						const hint = theme.fg("dim", "Enter/Space cycles values · Esc closes");
+						const header = safeThemeFg(theme, "accent", theme.bold("Zentui settings"));
+						const hint = safeThemeFg(theme, "muted", "Enter/Space cycles values · Esc closes");
 						return [
 							truncateToWidth(border, width, ""),
 							truncateToWidth(header, width, ""),

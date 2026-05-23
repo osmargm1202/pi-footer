@@ -19,7 +19,7 @@ import { readRuntimeInfo } from "./runtime";
 import { installSelectorBorderStyle } from "./selector-border";
 import { registerZentuiSettingsCommand } from "./settings-command";
 import { type FooterState, createInitialState, syncState } from "./state";
-import { renderAccentLine } from "./style";
+import { renderAccentLine, safeThemeFg } from "./style";
 import { PolishedEditor } from "./ui";
 import { installUserMessageStyle } from "./user-message";
 
@@ -88,8 +88,8 @@ export default function (pi: ExtensionAPI) {
 								getCurrentConfig().colorSources.editor,
 								state.modelLabel,
 							),
-							ctx.ui.theme.fg("text", state.providerLabel),
-						].join(ctx.ui.theme.fg("borderMuted", "  ")),
+							safeThemeFg(ctx.ui.theme, "text", state.providerLabel),
+						].join(safeThemeFg(ctx.ui.theme, "borderMuted", "  ")),
 					getThinkingLevel,
 				),
 		);

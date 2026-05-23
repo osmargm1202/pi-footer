@@ -52,7 +52,12 @@ function findMarkdownText(value: unknown): string | undefined {
 }
 
 function themeFg(theme: Theme | undefined, color: ThemeColor, text: string): string {
-	return theme ? theme.fg(color, text) : text;
+	if (!theme) return text;
+	try {
+		return theme.fg(color, text);
+	} catch {
+		return text;
+	}
 }
 
 function makeMarkdownTheme(theme: Theme | undefined): MarkdownTheme {

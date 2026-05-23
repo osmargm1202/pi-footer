@@ -1,3 +1,4 @@
+import type { ThemeColor } from "@earendil-works/pi-coding-agent";
 import type { ColorSource, ColorSpec } from "./config";
 
 type ThemeLike = {
@@ -72,6 +73,54 @@ const themeColorNameMap = new Map([
 
 const themeStyleModifiers = new Set(["bold", "italic", "underline"]);
 
+const themeColorTokens = new Set<ThemeColor>([
+	"accent",
+	"border",
+	"borderAccent",
+	"borderMuted",
+	"success",
+	"error",
+	"warning",
+	"muted",
+	"dim",
+	"text",
+	"thinkingText",
+	"userMessageText",
+	"customMessageText",
+	"customMessageLabel",
+	"toolTitle",
+	"toolOutput",
+	"mdHeading",
+	"mdLink",
+	"mdLinkUrl",
+	"mdCode",
+	"mdCodeBlock",
+	"mdCodeBlockBorder",
+	"mdQuote",
+	"mdQuoteBorder",
+	"mdHr",
+	"mdListBullet",
+	"toolDiffAdded",
+	"toolDiffRemoved",
+	"toolDiffContext",
+	"syntaxComment",
+	"syntaxKeyword",
+	"syntaxFunction",
+	"syntaxVariable",
+	"syntaxString",
+	"syntaxNumber",
+	"syntaxType",
+	"syntaxOperator",
+	"syntaxPunctuation",
+	"thinkingOff",
+	"thinkingMinimal",
+	"thinkingLow",
+	"thinkingMedium",
+	"thinkingHigh",
+	"thinkingXhigh",
+	"bashMode",
+]);
+
 function terminalColorToAnsi(color: string, isBackground = false): string | undefined {
 	const normalized = color.toLowerCase();
 	const colorCode = terminalColorCodes.get(normalized);
@@ -92,6 +141,26 @@ function isExplicitTerminalColorToken(token: string): boolean {
 	return /^(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/.test(normalized);
 }
 
+function isSupportedStyleToken(token: string): boolean {
+	const normalized = token.toLowerCase();
+	if (terminalStyleModifiers.has(normalized)) return true;
+	if (terminalColorToAnsi(normalized) !== undefined) return true;
+
+	const isForeground = normalized.startsWith("fg:");
+	const isBackground = normalized.startsWith("bg:");
+	if (isForeground || isBackground) {
+		return terminalColorToAnsi(normalized.slice(3), isBackground) !== undefined;
+	}
+
+	return themeColorTokens.has(token as ThemeColor);
+}
+
+export function isSupportedColorSpec(style: ColorSpec): boolean {
+	const trimmed = style.trim();
+	if (trimmed === "") return true;
+	return trimmed.split(/\s+/).every(isSupportedStyleToken);
+}
+
 function applyThemeModifiers(theme: ThemeLike, styleTokens: string[], text: string): string {
 	let rendered = text;
 	for (const token of styleTokens) {
@@ -103,7 +172,7 @@ function applyThemeModifiers(theme: ThemeLike, styleTokens: string[], text: stri
 	return rendered;
 }
 
-function themeFg(theme: ThemeLike, color: string, text: string): string {
+export function safeThemeFg(theme: ThemeLike, color: string, text: string): string {
 	try {
 		return theme.fg(color, text);
 	} catch {
@@ -137,7 +206,7 @@ export function colorize(theme: ThemeLike, color: ColorSpec, text: string): stri
 	if (isHexColor(color)) {
 		return `${hexToAnsi(color)}${text}\x1b[39m`;
 	}
-	return themeFg(theme, color, text);
+	return safeThemeFg(theme, color, text);
 }
 
 /**
@@ -184,7 +253,7 @@ export function renderThemeStyle(theme: ThemeLike, style: ColorSpec, text: strin
 	if (tokens.some(isExplicitTerminalColorToken)) return renderTerminalStyle(style, text);
 
 	const color = mapThemeColor(tokens) ?? "text";
-	return themeFg(theme, color, applyThemeModifiers(theme, tokens, text));
+	return safeThemeFg(theme, color, applyThemeModifiers(theme, tokens, text));
 }
 
 export function renderStyleForSource(
@@ -207,7 +276,7 @@ export function renderEditorBorder(text: string): string {
 }
 
 export function renderAccentLine(theme: ThemeLike, source: ColorSource, text: string): string {
-	return source === "terminal" ? renderEditorAccent(text) : themeFg(theme, "accent", text);
+	return source === "terminal" ? renderEditorAccent(text) : safeThemeFg(theme, "accent", text);
 }
 
 export function renderChromeBorder(
@@ -217,5 +286,5 @@ export function renderChromeBorder(
 	text: string,
 ): string {
 	if (source === "terminal") return renderTerminalStyle(terminalFallbackStyle, text);
-	return themeFg(theme, "borderMuted", text);
+	return safeThemeFg(theme, "borderMuted", text);
 }

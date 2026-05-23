@@ -53,7 +53,7 @@ export function installFooter(
 					renderStyleForSource(theme, colorSource, config.colors.gitBranch, text);
 				const gitStatusColor = (text: string) =>
 					renderStyleForSource(theme, colorSource, config.colors.gitStatus, text);
-				const gitIcon = gitColor(config.icons.git);
+				const gitIcon = config.icons.git ? gitColor(config.icons.git) : "";
 				const allStatus = [
 					state.conflicted > 0 ? config.icons.conflicted : "",
 					state.stashed ? config.icons.stashed : "",
@@ -75,7 +75,9 @@ export function installFooter(
 				const statusBlock =
 					allStatus || aheadBehind ? gitStatusColor(`[${allStatus}${aheadBehind}]`) : "";
 				const branchLabel = branch
-					? `on ${gitIcon} ${gitColor(branch)}${statusBlock ? ` ${statusBlock}` : ""}`
+					? [...["on", gitIcon, gitColor(branch)].filter(Boolean), statusBlock]
+							.filter(Boolean)
+							.join(" ")
 					: "";
 				const runtimeLabel = formatRuntimeSegment(
 					theme,

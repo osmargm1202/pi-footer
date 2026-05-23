@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { mergeConfig, saveColorSourcesPatch } from "../extensions/zentui/config";
+import { defaultConfig, mergeConfig, saveColorSourcesPatch } from "../extensions/zentui/config";
 import {
 	colorize,
 	renderChromeBorder,
@@ -47,6 +47,37 @@ describe("mergeConfig", () => {
 		expect(mergeConfig({ colors: { git: "syntaxKeyword" } }).colors.gitBranch).toBe(
 			"syntaxKeyword",
 		);
+	});
+
+	it("ignores invalid known values at runtime instead of trusting zentui.json", () => {
+		const config = mergeConfig({
+			projectRefreshIntervalMs: "fast",
+			icons: {
+				cwd: 42,
+				git: "git",
+			},
+			colors: {
+				cwd: 123,
+				gitStatus: "not-a-color",
+				separator: "dimmed",
+			},
+			colorSources: {
+				starship: "neon",
+				editor: "terminal",
+			},
+		});
+
+		expect(config.projectRefreshIntervalMs).toBe(defaultConfig.projectRefreshIntervalMs);
+		expect(config.icons.cwd).toBe(defaultConfig.icons.cwd);
+		expect(config.icons.git).toBe("git");
+		expect(config.colors.cwd).toBe(defaultConfig.colors.cwd);
+		expect(config.colors.gitStatus).toBe(defaultConfig.colors.gitStatus);
+		expect(config.colors.separator).toBe("dimmed");
+		expect(config.colorSources).toEqual({
+			starship: "theme",
+			editor: "terminal",
+			userMessages: "theme",
+		});
 	});
 
 	it("accepts valid color source preferences and ignores invalid values", () => {
@@ -98,14 +129,13 @@ describe("mergeConfig", () => {
 			expect(raw.colorSources).toEqual({
 				starship: "terminal",
 				editor: "terminal",
-				userMessages: "theme",
 			});
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
 	});
 
-	it("normalizes invalid color source values when saving patches", () => {
+	it("preserves invalid and unknown color source data on disk while normalizing runtime", () => {
 		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
 		const path = join(dir, "zentui.json");
 		try {
@@ -134,10 +164,29 @@ describe("mergeConfig", () => {
 				userMessages: "terminal",
 			});
 			expect(raw.colorSources).toEqual({
-				starship: "theme",
+				starship: "neon",
 				editor: "terminal",
 				userMessages: "terminal",
+				extra: "terminal",
 			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it("writes only the requested settings when creating zentui.json", () => {
+		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
+		const path = join(dir, "zentui.json");
+		try {
+			const config = saveColorSourcesPatch({ starship: "terminal" }, path);
+			const raw = JSON.parse(readFileSync(path, "utf8"));
+
+			expect(config.colorSources).toEqual({
+				starship: "terminal",
+				editor: "theme",
+				userMessages: "theme",
+			});
+			expect(raw).toEqual({ colorSources: { starship: "terminal" } });
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
@@ -182,6 +231,28 @@ describe("style rendering", () => {
 		expect(colorize(throwingTheme, "doesNotExist", "hello")).toBe("hello");
 		expect(renderStyle(throwingTheme, "doesNotExist", "hello")).toBe("hello");
 		expect(renderStyleForSource(throwingTheme, "theme", "doesNotExist", "hello")).toBe("hello");
+	});
+
+	it("maps Starship modifiers to safe theme colors when the theme rejects unknown tokens", () => {
+		const strictTheme = {
+			fg(token: string, text: string) {
+				if (!["muted", "syntaxKeyword", "text"].includes(token)) {
+					throw new Error(`Unknown theme color: ${token}`);
+				}
+				return `<${token}>${text}</${token}>`;
+			},
+			bold(text: string) {
+				return `<bold>${text}</bold>`;
+			},
+		};
+
+		expect(renderStyleForSource(strictTheme, "theme", "dimmed", "tokens")).toBe(
+			"<muted>tokens</muted>",
+		);
+		expect(renderStyleForSource(strictTheme, "theme", "bold purple", "git")).toBe(
+			"<syntaxKeyword><bold>git</bold></syntaxKeyword>",
+		);
+		expect(renderStyleForSource(strictTheme, "theme", "unknownColor", "text")).toBe("text");
 	});
 
 	it("supports hex colors", () => {

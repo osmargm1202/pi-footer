@@ -1238,11 +1238,13 @@ describe("Pi docs compliance", () => {
 			() => "medium",
 		);
 
-		const rendered = editor.render(120).join("\n");
+		const lines = editor.render(120);
+		const rendered = lines.join("\n");
 
 		expect(rendered.match(/claude-sonnet/g)).toHaveLength(1);
 		expect(rendered.match(/Anthropic/g)).toHaveLength(1);
 		expect(rendered.match(/medium/g)).toHaveLength(1);
+		expect(lines).toHaveLength(5);
 	});
 
 	it("collapses accumulated model and vim status lines from a nested polished editor", () => {
@@ -1252,7 +1254,9 @@ describe("Pi docs compliance", () => {
 				"─".repeat(width),
 				"",
 				staleMeta,
+				"",
 				staleMeta,
+				"",
 				staleMeta,
 				"─".repeat(width),
 			],
@@ -1270,12 +1274,14 @@ describe("Pi docs compliance", () => {
 			() => "xhigh",
 		);
 
-		const rendered = editor.render(120).join("\n");
+		const lines = editor.render(120);
+		const rendered = lines.join("\n");
 
 		expect(rendered.match(/claude-sonnet/g)).toHaveLength(1);
 		expect(rendered.match(/Anthropic/g)).toHaveLength(1);
 		expect(rendered.match(/xhigh/g)).toHaveLength(1);
 		expect(rendered.match(/INSERT/g)).toHaveLength(1);
+		expect(lines).toHaveLength(5);
 	});
 
 	it("replaces nested model lines with the current model and vim status line", () => {

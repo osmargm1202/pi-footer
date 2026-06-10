@@ -150,7 +150,20 @@ function isRenderedModelMetaLine(line: string, modelMeta: EditorMeta): boolean {
 }
 
 function removeRenderedModelMetaLines(lines: string[], modelMeta: EditorMeta): string[] {
-	return lines.filter((line) => !isRenderedModelMetaLine(line, modelMeta));
+	const result: string[] = [];
+	for (let index = 0; index < lines.length; index++) {
+		const line = lines[index] ?? "";
+		if (isRenderedModelMetaLine(line, modelMeta)) continue;
+
+		const plain = plainRenderedText(line).trim();
+		const previousWasMeta = index > 0 && isRenderedModelMetaLine(lines[index - 1] ?? "", modelMeta);
+		const nextIsMeta =
+			index < lines.length - 1 && isRenderedModelMetaLine(lines[index + 1] ?? "", modelMeta);
+		if (!plain && (previousWasMeta || nextIsMeta)) continue;
+
+		result.push(line);
+	}
+	return result;
 }
 
 function vimModeColor(mode: string): string {

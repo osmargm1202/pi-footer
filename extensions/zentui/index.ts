@@ -32,11 +32,13 @@ import { PolishedEditor, WrappedPolishedEditor } from "./ui";
 import { installUserMessageStyle } from "./user-message";
 
 const ZENTUI_EDITOR_FACTORY = Symbol.for("pi-zentui.editor-factory");
+const ZENTUI_EDITOR_BASE_FACTORY = Symbol.for("pi-zentui.editor-base-factory");
 
 type EditorFactory = NonNullable<Parameters<ExtensionContext["ui"]["setEditorComponent"]>[0]>;
 
 type ZentuiEditorFactory = EditorFactory & {
 	[ZENTUI_EDITOR_FACTORY]?: true;
+	[ZENTUI_EDITOR_BASE_FACTORY]?: EditorFactory;
 };
 
 type ApplyUiResult = {
@@ -47,6 +49,15 @@ type EditorInstallMode = "none" | "standalone" | "wrapper";
 
 function isZentuiEditorFactory(factory: EditorFactory | undefined): boolean {
 	return Boolean((factory as ZentuiEditorFactory | undefined)?.[ZENTUI_EDITOR_FACTORY]);
+}
+
+function getZentuiEditorBaseFactory(factory: EditorFactory | undefined): EditorFactory | undefined {
+	return (factory as ZentuiEditorFactory | undefined)?.[ZENTUI_EDITOR_BASE_FACTORY];
+}
+
+function isTuiContext(ctx: ExtensionContext): boolean {
+	const mode = (ctx as ExtensionContext & { mode?: string }).mode;
+	return ctx.hasUI && (mode === undefined || mode === "tui");
 }
 
 export default function (pi: ExtensionAPI) {
@@ -61,6 +72,7 @@ export default function (pi: ExtensionAPI) {
 	let footerInstalled = false;
 	let editorInstalled = false;
 	let editorInstallMode: EditorInstallMode = "none";
+	let installedEditorFactory: EditorFactory | undefined;
 	let wrappedEditorFactory: EditorFactory | undefined;
 	let prototypePatchesInstalled = false;
 
@@ -148,24 +160,38 @@ export default function (pi: ExtensionAPI) {
 				getThinkingLevel,
 			)) as ZentuiEditorFactory;
 		factory[ZENTUI_EDITOR_FACTORY] = true;
+		factory[ZENTUI_EDITOR_BASE_FACTORY] = baseFactory;
 		return factory;
 	};
 
 	const installEditor = (ctx: ExtensionContext): boolean => {
 		const currentFactory = ctx.ui.getEditorComponent();
-		if (currentFactory && isZentuiEditorFactory(currentFactory)) {
+		if (currentFactory && currentFactory === installedEditorFactory) {
 			editorInstalled = true;
 			return true;
 		}
 
 		installPrototypePatches();
-		if (currentFactory) {
+		const currentZentuiBaseFactory = getZentuiEditorBaseFactory(currentFactory);
+		if (currentFactory && isZentuiEditorFactory(currentFactory)) {
+			wrappedEditorFactory = currentZentuiBaseFactory;
+			const nextFactory = currentZentuiBaseFactory
+				? makeWrappedEditorFactory(ctx, currentZentuiBaseFactory)
+				: makeEditorFactory(ctx);
+			ctx.ui.setEditorComponent(nextFactory);
+			installedEditorFactory = nextFactory;
+			editorInstallMode = currentZentuiBaseFactory ? "wrapper" : "standalone";
+		} else if (currentFactory) {
 			wrappedEditorFactory = currentFactory;
-			ctx.ui.setEditorComponent(makeWrappedEditorFactory(ctx, currentFactory));
+			const nextFactory = makeWrappedEditorFactory(ctx, currentFactory);
+			ctx.ui.setEditorComponent(nextFactory);
+			installedEditorFactory = nextFactory;
 			editorInstallMode = "wrapper";
 		} else {
 			wrappedEditorFactory = undefined;
-			ctx.ui.setEditorComponent(makeEditorFactory(ctx));
+			const nextFactory = makeEditorFactory(ctx);
+			ctx.ui.setEditorComponent(nextFactory);
+			installedEditorFactory = nextFactory;
 			editorInstallMode = "standalone";
 		}
 		editorInstalled = true;
@@ -181,6 +207,7 @@ export default function (pi: ExtensionAPI) {
 			editorInstallMode === "wrapper" && wrappedEditorFactory ? wrappedEditorFactory : undefined,
 		);
 		wrappedEditorFactory = undefined;
+		installedEditorFactory = undefined;
 		editorInstallMode = "none";
 		editorInstalled = false;
 		return true;
@@ -216,7 +243,7 @@ export default function (pi: ExtensionAPI) {
 
 	const applyConfiguredUi = (ctx: ExtensionContext): ApplyUiResult => {
 		const result: ApplyUiResult = { editorBlocked: false };
-		if (!ctx.hasUI) return result;
+		if (!isTuiContext(ctx)) return result;
 		activeTheme = ctx.ui.theme;
 		if (currentConfig.features.editor) {
 			const currentFactory = ctx.ui.getEditorComponent();
@@ -235,11 +262,12 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const installUi = (ctx: ExtensionContext) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		activeTheme = ctx.ui.theme;
 		uninstallPrototypePatches();
 		footerInstalled = false;
 		editorInstalled = false;
+		installedEditorFactory = undefined;
 		ensureConfigExists();
 		currentConfig = loadConfig();
 		syncFooterState(ctx);
@@ -250,9 +278,9 @@ export default function (pi: ExtensionAPI) {
 
 	const scheduleEditorReconciliation = (ctx: ExtensionContext) => {
 		setTimeout(() => {
-			if (!ctx.hasUI || !currentConfig.features.editor) return;
+			if (!isTuiContext(ctx) || !currentConfig.features.editor) return;
 			const currentFactory = ctx.ui.getEditorComponent();
-			if (currentFactory && !isZentuiEditorFactory(currentFactory)) {
+			if (currentFactory && currentFactory !== installedEditorFactory) {
 				applyConfiguredUi(ctx);
 				refresh();
 			}
@@ -264,18 +292,20 @@ export default function (pi: ExtensionAPI) {
 		stopProjectRefresh();
 		requestFooterRender = undefined;
 		getActiveExtensionStatuses = () => new Map();
-		if (ctx?.hasUI) {
+		if (ctx && isTuiContext(ctx)) {
 			ctx.ui.setFooter(undefined);
 			const currentFactory = ctx.ui.getEditorComponent();
 			if (!currentFactory || isZentuiEditorFactory(currentFactory)) {
 				ctx.ui.setEditorComponent(
-					editorInstallMode === "wrapper" && wrappedEditorFactory
-						? wrappedEditorFactory
-						: undefined,
+					getZentuiEditorBaseFactory(currentFactory) ??
+						(editorInstallMode === "wrapper" && wrappedEditorFactory
+							? wrappedEditorFactory
+							: undefined),
 				);
 			}
 		}
 		wrappedEditorFactory = undefined;
+		installedEditorFactory = undefined;
 		editorInstallMode = "none";
 		footerInstalled = false;
 		editorInstalled = false;

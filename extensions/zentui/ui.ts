@@ -132,6 +132,44 @@ function composeMetadataLine(left: string, right: string | undefined, width: num
 	return `${leftText}${gap}${right}`;
 }
 
+function plainRenderedText(line: string): string {
+	return line
+		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
+		.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, "")
+		.replace(/\[[/?][^\]]+\]/g, "");
+}
+
+function isHorizontalBorder(line: string): boolean {
+	const plain = plainRenderedText(line).trim();
+	return plain.length > 0 && /^─+$/.test(plain);
+}
+
+function renderedContainsModelMeta(
+	lines: string[],
+	modelMeta: EditorMeta,
+	thinkingLevel: string | undefined,
+): boolean {
+	const required = [modelMeta.modelLabel, modelMeta.providerLabel].filter(Boolean);
+	if (thinkingLevel && thinkingLevel !== "off") required.push(thinkingLevel);
+	return lines.some((line) => {
+		const plain = plainRenderedText(line);
+		return required.every((part) => plain.includes(part));
+	});
+}
+
+function isAlreadyPolishedFrame(
+	lines: string[],
+	modelMeta: EditorMeta,
+	thinkingLevel: string | undefined,
+): boolean {
+	return (
+		lines.length >= 3 &&
+		isHorizontalBorder(lines[0] ?? "") &&
+		isHorizontalBorder(lines.at(-1) ?? "") &&
+		renderedContainsModelMeta(lines.slice(1, -1), modelMeta, thinkingLevel)
+	);
+}
+
 function vimModeColor(mode: string): string {
 	switch (mode.toLowerCase()) {
 		case "insert":
@@ -195,6 +233,9 @@ function renderPolishedFrame({
 		autocompleteCount > 0 && autocompleteCount < baseRendered.length
 			? baseRendered.slice(-autocompleteCount)
 			: [];
+	if (isAlreadyPolishedFrame(editorFrame, modelMeta, thinkingLevel)) {
+		return clampRenderedLines([...editorFrame, ...autocompleteLines], width);
+	}
 
 	if (editorFrame.length < 2) return clampRenderedLines(baseRendered, width);
 

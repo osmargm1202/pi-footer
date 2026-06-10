@@ -305,7 +305,8 @@ export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCo
 				return;
 			}
 
-			if (!ctx.hasUI) return;
+			const mode = (ctx as typeof ctx & { mode?: string }).mode;
+			if (!ctx.hasUI || (mode !== undefined && mode !== "tui")) return;
 
 			await ctx.ui.custom<void>((tui, theme, _keybindings, done) => {
 				const settingsListTheme = deps.settingsListTheme ?? getSettingsListTheme();

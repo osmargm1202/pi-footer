@@ -243,6 +243,7 @@ function makeContext(overrides: Record<string, unknown> = {}) {
 	const overrideUi = overrides.ui && typeof overrides.ui === "object" ? overrides.ui : undefined;
 	return {
 		hasUI: true,
+		mode: "tui",
 		cwd: process.cwd(),
 		model: { id: "claude-sonnet", provider: "anthropic", contextWindow: 200_000 },
 		sessionManager: { getBranch: () => [] },
@@ -307,6 +308,54 @@ describe("Pi docs compliance", () => {
 		const ctx = makeContext({ hasUI: false, ui: throwingUi });
 
 		await expect(emit(handlers, "session_start", ctx)).resolves.toBeUndefined();
+	});
+
+	it("does not install interactive TUI components in non-TUI UI modes", async () => {
+		const handlers = loadExtension();
+		let footerInstalled = false;
+		let editorInstalled = false;
+		const ctx = makeContext({
+			mode: "rpc",
+			ui: {
+				theme: makeTheme(),
+				setFooter() {
+					footerInstalled = true;
+				},
+				setEditorComponent() {
+					editorInstalled = true;
+				},
+				getEditorComponent() {
+					return undefined;
+				},
+			},
+		});
+
+		await emit(handlers, "session_start", ctx);
+
+		expect(footerInstalled).toBe(false);
+		expect(editorInstalled).toBe(false);
+	});
+
+	it("treats missing ctx.mode as legacy TUI for older Pi runtimes", async () => {
+		const handlers = loadExtension();
+		let editorFactory: unknown;
+		const ctx = makeContext({
+			mode: undefined,
+			ui: {
+				theme: makeTheme(),
+				setFooter() {},
+				setEditorComponent(factory: unknown) {
+					editorFactory = factory;
+				},
+				getEditorComponent() {
+					return editorFactory;
+				},
+			},
+		});
+
+		await emit(handlers, "session_start", ctx);
+
+		expect(editorFactory).toBeTypeOf("function");
 	});
 
 	it("does not install user-message rendering when ctx.hasUI is false", async () => {
@@ -387,6 +436,88 @@ describe("Pi docs compliance", () => {
 		await emit(handlers, "session_shutdown", ctx);
 
 		expect(editorFactory).toBe(existingEditorFactory);
+	});
+
+	it("refreshes a stale Zentui editor factory on extension reload instead of adopting old closures", async () => {
+		const firstHandlers = loadExtension();
+		let editorFactory: unknown;
+		let setEditorCalls = 0;
+		const ctx = makeContext({
+			ui: {
+				theme: makeTheme(),
+				setFooter() {},
+				setEditorComponent(factory: unknown) {
+					setEditorCalls += 1;
+					editorFactory = factory;
+				},
+				getEditorComponent() {
+					return editorFactory;
+				},
+			},
+		});
+
+		await emit(firstHandlers, "session_start", ctx);
+		const firstFactory = editorFactory;
+
+		const secondHandlers = loadExtension();
+		await emit(secondHandlers, "session_start", ctx);
+
+		expect(setEditorCalls).toBe(2);
+		expect(editorFactory).not.toBe(firstFactory);
+		expect(editorFactory).toBeTypeOf("function");
+	});
+
+	it("refreshes a stale wrapped Zentui editor without wrapping the old Zentui wrapper", async () => {
+		const firstHandlers = loadExtension();
+		let baseFactoryCalls = 0;
+		const existingEditorFactory = () => {
+			baseFactoryCalls += 1;
+			return {
+				render: (width: number) => ["─".repeat(width), "base editor", "─".repeat(width)],
+				invalidate() {},
+				handleInput() {},
+				getText: () => "",
+				setText() {},
+			};
+		};
+		let editorFactory: unknown = existingEditorFactory;
+		let setEditorCalls = 0;
+		const ctx = makeContext({
+			ui: {
+				theme: makeTheme(),
+				setFooter() {},
+				setEditorComponent(factory: unknown) {
+					setEditorCalls += 1;
+					editorFactory = factory;
+				},
+				getEditorComponent() {
+					return editorFactory;
+				},
+			},
+		});
+
+		await emit(firstHandlers, "session_start", ctx);
+		const firstWrappedFactory = editorFactory;
+
+		const secondHandlers = loadExtension();
+		await emit(secondHandlers, "session_start", ctx);
+
+		expect(setEditorCalls).toBe(2);
+		expect(editorFactory).not.toBe(firstWrappedFactory);
+		expect(editorFactory).not.toBe(existingEditorFactory);
+		const editor = (
+			editorFactory as (...args: unknown[]) => ReturnType<typeof existingEditorFactory>
+		)(
+			{ requestRender() {}, terminal: { rows: 24, cols: 80 } } as never,
+			{ borderColor: (text: string) => text, selectList: {} } as never,
+			{} as never,
+		);
+		const rendered = editor.render(80).join("\n");
+
+		expect(baseFactoryCalls).toBe(1);
+		expect(rendered).toContain("base editor");
+		expect(rendered.match(/claude-sonnet/g)).toHaveLength(1);
+		expect(rendered.match(/Anthropic/g)).toHaveLength(1);
 	});
 
 	it("re-wraps an editor component that loads after Zentui", async () => {
@@ -1090,6 +1221,30 @@ describe("Pi docs compliance", () => {
 		expect(rendered).toContain("[accent]claude-sonnet");
 	});
 
+	it("does not add another model line when wrapping an editor that already includes Zentui chrome", () => {
+		const meta = "[accent]claude-sonnet  [text]Anthropic  [muted]medium";
+		const base = {
+			render: (width: number) => ["─".repeat(width), "", meta, "─".repeat(width)],
+			invalidate() {},
+			handleInput() {},
+			getText: () => "",
+			setText() {},
+		};
+		const editor = new WrappedPolishedEditor(
+			base,
+			makeTaggedTheme(),
+			() => defaultConfig,
+			() => ({ modelLabel: "claude-sonnet", providerLabel: "Anthropic" }),
+			() => "medium",
+		);
+
+		const rendered = editor.render(120).join("\n");
+
+		expect(rendered.match(/claude-sonnet/g)).toHaveLength(1);
+		expect(rendered.match(/Anthropic/g)).toHaveLength(1);
+		expect(rendered.match(/medium/g)).toHaveLength(1);
+	});
+
 	it("proxies mutable editor callbacks and app-action state to the wrapped editor", () => {
 		const base = {
 			render: (width: number) => ["─".repeat(width), "", "─".repeat(width)],
@@ -1184,6 +1339,40 @@ describe("Pi docs compliance", () => {
 		});
 
 		expect(notified).toBe(false);
+		expect(customOpened).toBe(false);
+	});
+
+	it("does not open interactive Zentui settings outside TUI mode", async () => {
+		let command: { handler: (args: string, ctx: unknown) => Promise<void> } | undefined;
+		let customOpened = false;
+
+		registerZentuiSettingsCommand(
+			{
+				registerCommand(_name: string, options: unknown) {
+					command = options as typeof command;
+				},
+			} as never,
+			{
+				getConfig: () => defaultConfig,
+				setColorSources() {},
+				setUiFeatures: () => ({ applied: true }),
+				getActiveExtensionStatuses: () => new Map<string, string>(),
+				setExtensionStatusPlacement() {},
+				requestRender() {},
+			},
+		);
+
+		await command?.handler("", {
+			hasUI: true,
+			mode: "rpc",
+			ui: {
+				notify() {},
+				custom() {
+					customOpened = true;
+				},
+			},
+		});
+
 		expect(customOpened).toBe(false);
 	});
 
@@ -1370,6 +1559,7 @@ describe("Pi docs compliance", () => {
 
 			await command?.handler("", {
 				hasUI: true,
+				mode: "tui",
 				ui: {
 					theme: makeTaggedTheme(),
 					notify() {},
@@ -1425,6 +1615,7 @@ describe("Pi docs compliance", () => {
 
 			await command?.handler("", {
 				hasUI: true,
+				mode: "tui",
 				ui: {
 					theme: makeTaggedTheme(),
 					notify() {},
@@ -1488,6 +1679,7 @@ describe("Pi docs compliance", () => {
 		await expect(
 			command?.handler("", {
 				hasUI: true,
+				mode: "tui",
 				ui: {
 					theme: makeStrictTheme(),
 					notify() {},
@@ -1538,6 +1730,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},
@@ -1598,6 +1791,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},
@@ -1651,6 +1845,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},
@@ -1704,6 +1899,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},
@@ -1760,6 +1956,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},
@@ -1818,6 +2015,7 @@ describe("Pi docs compliance", () => {
 
 		await command?.handler("", {
 			hasUI: true,
+			mode: "tui",
 			ui: {
 				theme: makeTaggedTheme(),
 				notify() {},

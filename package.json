@@ -1,6 +1,6 @@
 {
 	"name": "pi-footer",
-	"version": "0.2.6",
+	"version": "0.2.7",
 	"description": "Zentui-based editor/footer UI for the ORGM Pi stack.",
 	"type": "module",
 	"license": "MIT",

@@ -149,6 +149,19 @@ function isRenderedModelMetaLine(line: string, modelMeta: EditorMeta): boolean {
 	return plain.includes(modelMeta.modelLabel) && plain.includes(modelMeta.providerLabel);
 }
 
+function hasRenderedModelMetaLine(lines: string[], modelMeta: EditorMeta): boolean {
+	return lines.some((line) => isRenderedModelMetaLine(line, modelMeta));
+}
+
+function isAlreadyPolishedFrame(lines: string[], modelMeta: EditorMeta): boolean {
+	return (
+		lines.length >= 3 &&
+		isHorizontalBorder(lines[0] ?? "") &&
+		isHorizontalBorder(lines.at(-1) ?? "") &&
+		hasRenderedModelMetaLine(lines.slice(1, -1), modelMeta)
+	);
+}
+
 function removeRenderedModelMetaLines(lines: string[], modelMeta: EditorMeta): string[] {
 	const result: string[] = [];
 	for (let index = 0; index < lines.length; index++) {
@@ -164,6 +177,13 @@ function removeRenderedModelMetaLines(lines: string[], modelMeta: EditorMeta): s
 		result.push(line);
 	}
 	return result;
+}
+
+function removeStalePolishedLeadingSpacer(lines: string[], shouldRemove: boolean): string[] {
+	if (!shouldRemove || lines.length === 0) return lines;
+	const firstLine = lines[0] ?? "";
+	if (plainRenderedText(firstLine).trim()) return lines;
+	return lines.slice(1);
 }
 
 function vimModeColor(mode: string): string {
@@ -231,7 +251,11 @@ function renderPolishedFrame({
 			: [];
 	if (editorFrame.length < 2) return clampRenderedLines(baseRendered, width);
 
-	const editorLines = removeRenderedModelMetaLines(editorFrame.slice(1, -1), modelMeta);
+	const stalePolishedFrame = isAlreadyPolishedFrame(editorFrame, modelMeta);
+	const editorLines = removeStalePolishedLeadingSpacer(
+		removeRenderedModelMetaLines(editorFrame.slice(1, -1), modelMeta),
+		stalePolishedFrame,
+	);
 	const model = renderStyleForSourceOrFallback(
 		uiTheme,
 		colorSource,

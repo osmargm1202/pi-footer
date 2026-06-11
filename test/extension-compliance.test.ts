@@ -1312,6 +1312,74 @@ describe("Pi docs compliance", () => {
 		expect(lines).toHaveLength(5);
 	});
 
+	it("drops the stale leading spacer when wrapping an already-polished editor with text", () => {
+		const staleMeta = "claude-sonnet  Anthropic  xhigh";
+		const base = {
+			render: (width: number) => [
+				"─".repeat(width),
+				"",
+				"typed text",
+				"",
+				staleMeta,
+				"─".repeat(width),
+			],
+			invalidate() {},
+			handleInput() {},
+			getText: () => "typed text",
+			setText() {},
+		};
+		const editor = new WrappedPolishedEditor(
+			base,
+			makeTaggedTheme(),
+			() => defaultConfig,
+			() => ({ modelLabel: "claude-sonnet", providerLabel: "Anthropic" }),
+			() => "xhigh",
+		);
+
+		const lines = editor.render(120);
+		const textIndex = lines.findIndex((line) => line.includes("typed text"));
+
+		expect(textIndex).toBe(2);
+		expect(lines).toHaveLength(6);
+		expect(stripTestTags(lines[textIndex - 2] ?? "").trim()).toMatch(/^─+$/);
+		expect(stripTestTags(lines[textIndex - 1] ?? "").trim()).toBe("│");
+	});
+
+	it("preserves a user blank line after removing stale polished editor spacing", () => {
+		const staleMeta = "claude-sonnet  Anthropic  xhigh";
+		const base = {
+			render: (width: number) => [
+				"─".repeat(width),
+				"",
+				"",
+				"typed text",
+				"",
+				staleMeta,
+				"─".repeat(width),
+			],
+			invalidate() {},
+			handleInput() {},
+			getText: () => "\ntyped text",
+			setText() {},
+		};
+		const editor = new WrappedPolishedEditor(
+			base,
+			makeTaggedTheme(),
+			() => defaultConfig,
+			() => ({ modelLabel: "claude-sonnet", providerLabel: "Anthropic" }),
+			() => "xhigh",
+		);
+
+		const lines = editor.render(120);
+		const textIndex = lines.findIndex((line) => line.includes("typed text"));
+
+		expect(textIndex).toBe(3);
+		expect(lines).toHaveLength(7);
+		expect(stripTestTags(lines[textIndex - 3] ?? "").trim()).toMatch(/^─+$/);
+		expect(stripTestTags(lines[textIndex - 2] ?? "").trim()).toBe("│");
+		expect(stripTestTags(lines[textIndex - 1] ?? "").trim()).toBe("│");
+	});
+
 	it("collapses accumulated model and vim status lines from a nested polished editor", () => {
 		const staleMeta = "claude-sonnet  Anthropic  xhigh                               INSERT";
 		const base = {

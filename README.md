@@ -1,14 +1,14 @@
-# Zentui
+# pi-footer
 
 A Starship-inspired statusline and Opencode-style TUI for [Pi](https://pi.dev).
 
 ## Screenshots
 
-![Zentui](https://raw.githubusercontent.com/lmilojevicc/pi-zentui/main/assets/zentui.png)
+![pi-footer](https://raw.githubusercontent.com/osmargm1202/pi-footer/main/assets/zentui.png)
 
 ## What is this?
 
-Zentui brings two popular aesthetics to Pi:
+pi-footer brings two popular aesthetics to Pi:
 
 - **[Starship](https://starship.rs/) footer** — shows your current directory, git branch, git status indicators, and runtime/version detection in a compact, icon-rich format
 - **[Opencode](https://github.com/opencode-ai/opencode) editor** — clean bordered input box with accent rail, copy-friendly mode, and model/provider display inside the editor frame
@@ -23,7 +23,7 @@ Zentui brings two popular aesthetics to Pi:
 - `via  v5.5.0` — runtime detection with version and Starship-style Nerd Font runtime/language modules
 - Right side shows context usage, token counts, and cost
 - Third-party Pi extension statuses from `ctx.ui.setStatus()` can be shown on the left,
-  middle, or right side, or hidden per status key from `/zentui`
+  middle, or right side, or hidden per status key from `/pi-footer`
 
 ### Editor (Opencode-inspired)
 
@@ -50,7 +50,7 @@ Zentui brings two popular aesthetics to Pi:
 
 ### Runtime Detection
 
-Detects Starship Nerd Font runtime/language modules, uses the Starship Nerd Font symbols, and keeps Starship-style defaults such as `bold green` for Node.js. By default Zentui maps those styles through your active Pi theme; switch the Starship/footer color source to `terminal` in `/zentui` if you want your terminal colorscheme to supply the exact ANSI colors.
+Detects Starship Nerd Font runtime/language modules, uses the Starship Nerd Font symbols, and keeps Starship-style defaults such as `bold green` for Node.js. By default pi-footer maps those styles through your active Pi theme; switch the Starship/footer color source to `terminal` in `/pi-footer` if you want your terminal colorscheme to supply the exact ANSI colors.
 
 | Runtime/language | Detection examples                                            |
 | ---------------- | ------------------------------------------------------------- |
@@ -116,30 +116,73 @@ Detects Starship Nerd Font runtime/language modules, uses the Starship Nerd Font
 
 ```bash
 # From npm
-pi install npm:pi-zentui
+pi install npm:pi-footer
 
 # From git
-pi install git:github.com/lmilojevicc/pi-zentui
+pi install git:github.com/osmargm1202/pi-footer
 ```
+
+## ORGM Pi stack
+
+This package is part of the ORGM Pi extension stack.
+
+Recommended install:
+
+```bash
+for pkg in pi-mem pi-caveman pi-harness pi-footer; do
+  pi install git:github.com/osmargm1202/$pkg
+done
+```
+
+Packages:
+
+- `pi-mem`: local memory/context index provider.
+- `pi-caveman`: caveman runtime and shared state events.
+- `pi-harness`: ORGM commands, config, title, ask/todo/banner bridge.
+- `pi-footer`: Zentui-based editor/footer UI that displays ORGM status.
+
+## Coupled integrations
+
+Produces:
+
+- Opencode-style editor UI.
+- Starship-style footer/statusline.
+- `pi-footer` command and `~/.pi/agent/pi-footer.json` config.
+
+Consumes:
+
+- Third-party statuses published through `ctx.ui.setStatus()`.
+- `pi-caveman` shared state for caveman status display.
+- `pi-harness` title state for title display.
+
+Hard dependencies:
+
+- None. `pi-footer` can run as a standalone Zentui fork.
+
+Soft dependencies:
+
+- `pi-caveman` adds caveman status.
+- `pi-harness` adds title display and ORGM command bridge.
+- `pi-mem` can provide related ORGM context/banner data through other stack packages.
 
 ## Config
 
-User config lives at `~/.pi/agent/zentui.json`. The file is optional: missing or invalid known values fall back to Zentui defaults, unknown keys are ignored at runtime, and `/zentui` can patch color-source settings, UI feature toggles, and active third-party status placements.
+User config lives at `~/.pi/agent/pi-footer.json`. The file is optional: missing or invalid known values fall back to pi-footer defaults, unknown keys are ignored at runtime, and `/pi-footer` can patch color-source settings, UI feature toggles, and active third-party status placements.
 
-The interactive `/zentui` menu is split into three sections. Use `Tab` to switch between `Coloring`, `Features`, and `Status line`.
+The interactive `/pi-footer` menu is split into three sections. Use `Tab` to switch between `Coloring`, `Features`, and `Status line`.
 
 Useful slash-command shortcuts:
 
 ```text
-/zentui editor enable
-/zentui editor disable
-/zentui statusline enable
-/zentui statusline disable
-/zentui editor toggle
-/zentui statusline toggle
-/zentui copy-friendly enable
-/zentui copy-friendly disable
-/zentui copy-friendly toggle
+/pi-footer editor enable
+/pi-footer editor disable
+/pi-footer statusline enable
+/pi-footer statusline disable
+/pi-footer editor toggle
+/pi-footer statusline toggle
+/pi-footer copy-friendly enable
+/pi-footer copy-friendly disable
+/pi-footer copy-friendly toggle
 ```
 
 Default config values — copy this and change any value you want:
@@ -208,11 +251,11 @@ Default config values — copy this and change any value you want:
 
 - Style values can be Starship/terminal strings (`bold purple`, `fg:202`, `#89b4fa`, `bg:blue fg:bright-green`) or Pi theme tokens (`accent`, `borderMuted`, `thinkingHigh`).
 - `projectRefreshIntervalMs`: project status polling interval; `0` disables polling.
-- `icons`: every shown icon key is configurable; omit any key to use the Zentui default. `editorPrompt` controls an optional copy-friendly editor prompt glyph; the default is `""` so copy-friendly mode stays rail-free.
-- `colorSources`: `theme` maps styles through Pi theme tokens; `terminal` emits terminal colors. `/zentui` switches these sources; manual JSON controls specific style values.
-- `features`: `editor` enables Zentui's custom editor, selector borders, and previous-message chrome. `statusLine` enables Zentui's custom footer/status line. `copyFriendly` hides editor and previous-message rail glyphs so native terminal selection copies less chrome. All three can be changed from `/zentui` or direct slash-command arguments.
-- `extensionStatuses`: controls third-party statuses published by other Pi extensions through `ctx.ui.setStatus()`. `defaultPlacement` and each `placements` value can be `off`, `left`, `middle`, or `right`. `/zentui` lists only statuses that are currently active.
-- The shown `editor*` values match the default `theme` source. Omit those keys to keep Zentui's source-aware defaults when switching between `theme` and `terminal`.
+- `icons`: every shown icon key is configurable; omit any key to use the pi-footer default. `editorPrompt` controls an optional copy-friendly editor prompt glyph; the default is `""` so copy-friendly mode stays rail-free.
+- `colorSources`: `theme` maps styles through Pi theme tokens; `terminal` emits terminal colors. `/pi-footer` switches these sources; manual JSON controls specific style values.
+- `features`: `editor` enables pi-footer's custom editor, selector borders, and previous-message chrome. `statusLine` enables pi-footer's custom footer/status line. `copyFriendly` hides editor and previous-message rail glyphs so native terminal selection copies less chrome. All three can be changed from `/pi-footer` or direct slash-command arguments.
+- `extensionStatuses`: controls third-party statuses published by other Pi extensions through `ctx.ui.setStatus()`. `defaultPlacement` and each `placements` value can be `off`, `left`, `middle`, or `right`. `/pi-footer` lists only statuses that are currently active.
+- The shown `editor*` values match the default `theme` source. Omit those keys to keep pi-footer's source-aware defaults when switching between `theme` and `terminal`.
 - `editorAccent` styles the active editor rail and previous user-message rail when `features.copyFriendly` is disabled.
 - `editorPrompt` styles the copy-friendly editor prompt glyph. Omit it to use `editorAccent`, then the default accent fallback.
 - `editorBorder` styles the active editor and previous user-message top/bottom border color only; the border glyph stays `─`.

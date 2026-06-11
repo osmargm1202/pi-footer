@@ -29,7 +29,7 @@ const extensionStatusPlacementValues: ExtensionStatusPlacement[] = [
 	"middle",
 	"right",
 ];
-const extensionStatusColorModeValues: ExtensionStatusColorMode[] = ["zentui", "original"];
+const extensionStatusColorModeValues: ExtensionStatusColorMode[] = ["pi-footer", "original"];
 type FeatureState = "enabled" | "disabled";
 
 const featureStateValues: FeatureState[] = ["enabled", "disabled"];
@@ -135,7 +135,7 @@ function featurePatch(id: FeatureSettingId, value: FeatureState): Partial<UiFeat
 }
 
 function usageText(): string {
-	return "Usage: /zentui [editor|statusline|copy-friendly] [enable|disable|toggle]";
+	return "Usage: /pi-footer [editor|statusline|copy-friendly] [enable|disable|toggle]";
 }
 
 function featureNotification(
@@ -298,7 +298,7 @@ function withSectionFooter(lines: string[], theme: ExtensionContext["ui"]["theme
 }
 
 export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCommandDeps): void {
-	pi.registerCommand("zentui", {
+	pi.registerCommand("pi-footer", {
 		description: "Configure Zentui",
 		getArgumentCompletions: argumentCompletions,
 		handler: async (_args, ctx) => {
@@ -323,7 +323,7 @@ export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCo
 					}
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
-					if (ctx.hasUI) ctx.ui.notify(`Could not update Zentui settings: ${message}`, "error");
+					if (ctx.hasUI) ctx.ui.notify(`Could not update pi-footer settings: ${message}`, "error");
 				}
 				return;
 			}
@@ -374,7 +374,7 @@ export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCo
 												applyFeatureChange(id, newValue);
 											} catch (error) {
 												const message = error instanceof Error ? error.message : String(error);
-												ctx.ui.notify(`Could not update Zentui settings: ${message}`, "error");
+												ctx.ui.notify(`Could not update pi-footer settings: ${message}`, "error");
 											}
 										}, 0);
 										return;
@@ -415,7 +415,7 @@ export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCo
 								}
 							} catch (error) {
 								const message = error instanceof Error ? error.message : String(error);
-								ctx.ui.notify(`Could not update Zentui settings: ${message}`, "error");
+								ctx.ui.notify(`Could not update pi-footer settings: ${message}`, "error");
 							}
 						},
 						() => done(undefined),

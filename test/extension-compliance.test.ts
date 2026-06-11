@@ -1500,7 +1500,7 @@ describe("Pi docs compliance", () => {
 		const commands = new Map<string, unknown>();
 		loadExtension({ commands });
 
-		expect(commands.has("zentui")).toBe(true);
+		expect(commands.has("pi-footer")).toBe(true);
 	});
 
 	it("does not use interactive UI when the Zentui settings command has no UI", async () => {

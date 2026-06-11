@@ -19,9 +19,9 @@ export type UiFeaturesConfig = {
 };
 
 export type ExtensionStatusPlacement = "off" | "left" | "middle" | "right";
-export type ExtensionStatusColorMode = "zentui" | "original";
+export type ExtensionStatusColorMode = "pi-footer" | "original";
 
-const DEFAULT_EXTENSION_STATUS_COLOR_MODE: ExtensionStatusColorMode = "zentui";
+const DEFAULT_EXTENSION_STATUS_COLOR_MODE: ExtensionStatusColorMode = "pi-footer";
 
 export type ExtensionStatusesConfig = {
 	defaultPlacement: ExtensionStatusPlacement;
@@ -80,7 +80,7 @@ export type PolishedTuiConfig = {
 	extensionStatuses: ExtensionStatusesConfig;
 };
 
-export const configPath = join(getAgentDir(), "zentui.json");
+export const configPath = join(getAgentDir(), "pi-footer.json");
 
 export const defaultConfig: PolishedTuiConfig = {
 	projectRefreshIntervalMs: DEFAULT_PROJECT_REFRESH_INTERVAL_MS,
@@ -257,7 +257,7 @@ export function isExtensionStatusPlacement(value: unknown): value is ExtensionSt
 }
 
 export function isExtensionStatusColorMode(value: unknown): value is ExtensionStatusColorMode {
-	return value === "zentui" || value === "original";
+	return value === "pi-footer" || value === "original";
 }
 
 function normalizeExtensionStatuses(record: Record<string, unknown>): ExtensionStatusesConfig {

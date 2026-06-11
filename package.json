@@ -1,19 +1,27 @@
 {
-	"name": "pi-zentui",
+	"name": "pi-footer",
 	"version": "0.2.6",
-	"description": "A Starship-inspired statusline and Opencode-style TUI for Pi.",
+	"description": "Zentui-based editor/footer UI for the ORGM Pi stack.",
 	"type": "module",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/lmilojevicc/pi-zentui.git"
+		"url": "git+https://github.com/osmargm1202/pi-footer.git"
 	},
-	"homepage": "https://github.com/lmilojevicc/pi-zentui#readme",
+	"homepage": "https://github.com/osmargm1202/pi-footer#readme",
 	"bugs": {
-		"url": "https://github.com/lmilojevicc/pi-zentui/issues"
+		"url": "https://github.com/osmargm1202/pi-footer/issues"
 	},
-	"keywords": ["pi-package", "pi-extension", "pi-theme", "starship", "tui"],
-	"files": ["extensions"],
+	"keywords": [
+		"pi-package",
+		"pi-extension",
+		"pi-theme",
+		"starship",
+		"tui"
+	],
+	"files": [
+		"extensions"
+	],
 	"scripts": {
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
@@ -32,8 +40,10 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"pi": {
-		"extensions": ["./extensions"],
-		"image": "https://raw.githubusercontent.com/lmilojevicc/pi-zentui/main/assets/zentui.png"
+		"extensions": [
+			"./extensions"
+		],
+		"image": "https://raw.githubusercontent.com/osmargm1202/pi-footer/main/assets/zentui.png"
 	},
 	"publishConfig": {
 		"access": "public"

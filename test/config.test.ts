@@ -89,7 +89,7 @@ describe("mergeConfig", () => {
 				},
 				colorModes: {
 					alpha: "original",
-					beta: "zentui",
+					beta: "pi-footer",
 				},
 			},
 		});
@@ -103,7 +103,7 @@ describe("mergeConfig", () => {
 			},
 			colorModes: {
 				alpha: "original",
-				beta: "zentui",
+				beta: "pi-footer",
 			},
 		});
 	});
@@ -165,7 +165,7 @@ describe("mergeConfig", () => {
 		expect(config.colors.editorThinkingXhigh).toBe("thinkingXhigh");
 	});
 
-	it("ignores invalid known values at runtime instead of trusting zentui.json", () => {
+	it("ignores invalid known values at runtime instead of trusting pi-footer.json", () => {
 		const config = mergeConfig({
 			projectRefreshIntervalMs: "fast",
 			icons: {
@@ -234,8 +234,8 @@ describe("mergeConfig", () => {
 	});
 
 	it("saves color source patches without erasing unknown user config", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			writeFileSync(
 				path,
@@ -280,8 +280,8 @@ describe("mergeConfig", () => {
 	});
 
 	it("preserves invalid and unknown color source data on disk while normalizing runtime", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			writeFileSync(
 				path,
@@ -318,9 +318,9 @@ describe("mergeConfig", () => {
 		}
 	});
 
-	it("writes only the requested settings when creating zentui.json", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+	it("writes only the requested settings when creating pi-footer.json", () => {
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			const config = saveColorSourcesPatch({ starship: "terminal" }, path);
 			const raw = JSON.parse(readFileSync(path, "utf8"));
@@ -337,8 +337,8 @@ describe("mergeConfig", () => {
 	});
 
 	it("saves UI feature patches without erasing unknown user config", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			writeFileSync(
 				path,
@@ -374,9 +374,9 @@ describe("mergeConfig", () => {
 		}
 	});
 
-	it("writes only the requested UI feature setting when creating zentui.json", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+	it("writes only the requested UI feature setting when creating pi-footer.json", () => {
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			const config = saveUiFeaturesPatch({ editor: false }, path);
 			const raw = JSON.parse(readFileSync(path, "utf8"));
@@ -392,9 +392,9 @@ describe("mergeConfig", () => {
 		}
 	});
 
-	it("saves extension status placement when creating zentui.json", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+	it("saves extension status placement when creating pi-footer.json", () => {
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			const config = saveExtensionStatusPlacement("plugin.key", "middle", path);
 			const raw = JSON.parse(readFileSync(path, "utf8"));
@@ -412,9 +412,9 @@ describe("mergeConfig", () => {
 		}
 	});
 
-	it("saves extension status color mode when creating zentui.json", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+	it("saves extension status color mode when creating pi-footer.json", () => {
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			const config = saveExtensionStatusColorMode("plugin.key", "original", path);
 			const raw = JSON.parse(readFileSync(path, "utf8"));
@@ -433,8 +433,8 @@ describe("mergeConfig", () => {
 	});
 
 	it("saves extension status color mode without erasing placement config", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			writeFileSync(
 				path,
@@ -450,7 +450,7 @@ describe("mergeConfig", () => {
 								invalid: "center",
 							},
 							colorModes: {
-								alpha: "zentui",
+								alpha: "pi-footer",
 								invalid: "muted",
 							},
 						},
@@ -466,7 +466,7 @@ describe("mergeConfig", () => {
 			expect(config.extensionStatuses).toEqual({
 				defaultPlacement: "left",
 				placements: { alpha: "right" },
-				colorModes: { alpha: "zentui", beta: "original" },
+				colorModes: { alpha: "pi-footer", beta: "original" },
 			});
 			expect(raw.unknown).toBe(true);
 			expect(raw.colors.futureKey).toBe("future");
@@ -476,7 +476,7 @@ describe("mergeConfig", () => {
 				invalid: "center",
 			});
 			expect(raw.extensionStatuses.colorModes).toEqual({
-				alpha: "zentui",
+				alpha: "pi-footer",
 				invalid: "muted",
 				beta: "original",
 			});
@@ -486,8 +486,8 @@ describe("mergeConfig", () => {
 	});
 
 	it("saves extension status placement without erasing unknown user config", () => {
-		const dir = mkdtempSync(join(tmpdir(), "zentui-config-"));
-		const path = join(dir, "zentui.json");
+		const dir = mkdtempSync(join(tmpdir(), "pi-footer-config-"));
+		const path = join(dir, "pi-footer.json");
 		try {
 			writeFileSync(
 				path,

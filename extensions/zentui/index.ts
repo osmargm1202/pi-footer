@@ -21,6 +21,13 @@ import {
 import { installFooter } from "./footer";
 import { emptyGitStatus, readGitStatus } from "./git";
 import {
+	PI_CAVEMAN_STATE_EVENT,
+	TITLE_STATE_EVENT,
+	applyCavemanState,
+	applyTitleState,
+	restoreOrgmStatusState,
+} from "./orgm-status";
+import {
 	type ScheduleProjectRefreshOptions,
 	type StopProjectRefreshInterval,
 	createProjectRefreshScheduler,
@@ -272,6 +279,7 @@ export default function (pi: ExtensionAPI) {
 		installedEditorFactory = undefined;
 		ensureConfigExists();
 		currentConfig = loadConfig();
+		state.orgmStatus = restoreOrgmStatusState(ctx.sessionManager.getEntries?.() ?? []);
 		syncFooterState(ctx);
 		stopProjectRefresh();
 		applyConfiguredUi(ctx);
@@ -320,6 +328,15 @@ export default function (pi: ExtensionAPI) {
 	const syncInteractiveAndProjectState = (_event: unknown, ctx: ExtensionContext) => {
 		refreshInteractiveState(ctx, true);
 	};
+
+	pi.events?.on(PI_CAVEMAN_STATE_EVENT, (data: unknown) => {
+		if (applyCavemanState(state.orgmStatus, data)) refresh();
+	});
+
+	pi.events?.on(TITLE_STATE_EVENT, (data: unknown) => {
+		applyTitleState(state.orgmStatus, data);
+		refresh();
+	});
 
 	pi.on("session_start", async (_event, ctx) => {
 		installUi(ctx);

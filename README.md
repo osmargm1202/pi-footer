@@ -22,6 +22,7 @@ pi-footer brings two popular aesthetics to Pi:
 - `[!?↑]` — git status indicators (modified, untracked, ahead/behind, stashed, etc.)
 - `via  v5.5.0` — runtime detection with version and Starship-style Nerd Font runtime/language modules
 - Right side shows context usage, token counts, and cost
+- Optional ORGM line displays current session title and caveman status, e.g. `Build footer · caveman:full`
 - Third-party Pi extension statuses from `ctx.ui.setStatus()` can be shown on the left,
   middle, or right side, or hidden per status key from `/pi-footer`
 

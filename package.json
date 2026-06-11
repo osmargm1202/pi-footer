@@ -12,16 +12,8 @@
 	"bugs": {
 		"url": "https://github.com/osmargm1202/pi-footer/issues"
 	},
-	"keywords": [
-		"pi-package",
-		"pi-extension",
-		"pi-theme",
-		"starship",
-		"tui"
-	],
-	"files": [
-		"extensions"
-	],
+	"keywords": ["pi-package", "pi-extension", "pi-theme", "starship", "tui"],
+	"files": ["extensions"],
 	"scripts": {
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
@@ -40,9 +32,7 @@
 		"@earendil-works/pi-tui": "*"
 	},
 	"pi": {
-		"extensions": [
-			"./extensions"
-		],
+		"extensions": ["./extensions"],
 		"image": "https://raw.githubusercontent.com/osmargm1202/pi-footer/main/assets/zentui.png"
 	},
 	"publishConfig": {

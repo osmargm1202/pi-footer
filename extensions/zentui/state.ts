@@ -7,6 +7,7 @@ import {
 	getUsageTotals,
 } from "./format";
 import type { GitStatusSummary } from "./git";
+import type { OrgmStatusState } from "./orgm-status";
 import type { RuntimeInfo } from "./runtime";
 
 export type FooterState = GitStatusSummary & {
@@ -16,6 +17,7 @@ export type FooterState = GitStatusSummary & {
 	tokenLabel: string;
 	costLabel: string;
 	runtime?: RuntimeInfo;
+	orgmStatus: OrgmStatusState;
 };
 
 export function createInitialState(gitDefaults: GitStatusSummary): FooterState {
@@ -26,6 +28,7 @@ export function createInitialState(gitDefaults: GitStatusSummary): FooterState {
 		tokenLabel: "↑0 ↓0",
 		costLabel: "$0.000",
 		runtime: undefined,
+		orgmStatus: { title: "", caveman: null },
 		...gitDefaults,
 	};
 }

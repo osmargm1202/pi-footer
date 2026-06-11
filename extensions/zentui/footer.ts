@@ -3,6 +3,7 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { PolishedTuiConfig } from "./config";
 import { type ExtensionStatusSegment, collectExtensionStatusSegments } from "./extension-status";
 import { formatCwdLabel, formatRuntimeSegment } from "./format";
+import { formatOrgmStatusLine } from "./orgm-status";
 import type { FooterState } from "./state";
 import { renderStyleForSource } from "./style";
 
@@ -232,7 +233,17 @@ export function installFooter(
 					innerWidth,
 				);
 				const framed = width > 2 ? ` ${truncateToWidth(content, width - 2, "")} ` : content;
-				return [truncateToWidth(framed, width, "")];
+				const orgmStatus = formatOrgmStatusLine(state.orgmStatus);
+				if (!orgmStatus) return [truncateToWidth(framed, width, "")];
+				const styledOrgmStatus = renderStyleForSource(
+					theme,
+					colorSource,
+					config.colors.extensionStatus,
+					orgmStatus,
+				);
+				const orgmLine =
+					width > 2 ? ` ${truncateToWidth(styledOrgmStatus, width - 2, "")} ` : styledOrgmStatus;
+				return [truncateToWidth(framed, width, ""), truncateToWidth(orgmLine, width, "")];
 			},
 		};
 	});

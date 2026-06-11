@@ -288,11 +288,15 @@ export default function (pi: ExtensionAPI) {
 
 	const scheduleEditorReconciliation = (ctx: ExtensionContext) => {
 		setTimeout(() => {
-			if (!isTuiContext(ctx) || !currentConfig.features.editor) return;
-			const currentFactory = ctx.ui.getEditorComponent();
-			if (currentFactory && currentFactory !== installedEditorFactory) {
-				applyConfiguredUi(ctx);
-				refresh();
+			try {
+				if (!isTuiContext(ctx) || !currentConfig.features.editor) return;
+				const currentFactory = ctx.ui.getEditorComponent();
+				if (currentFactory && currentFactory !== installedEditorFactory) {
+					applyConfiguredUi(ctx);
+					refresh();
+				}
+			} catch {
+				// The session may be gone by the time delayed reconciliation runs.
 			}
 		}, 0);
 	};

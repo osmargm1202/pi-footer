@@ -525,6 +525,24 @@ describe("Pi docs compliance", () => {
 		expect(rendered.match(/Anthropic/g)).toHaveLength(1);
 	});
 
+	it("does not crash when delayed editor reconciliation sees a stale context", async () => {
+		const handlers = loadExtension();
+		const ctx = makeContext();
+		let active = true;
+		Object.defineProperty(ctx, "mode", {
+			get() {
+				if (!active) throw new Error("stale ctx");
+				return "tui";
+			},
+			configurable: true,
+		});
+
+		await emit(handlers, "session_start", ctx);
+		active = false;
+
+		await new Promise((resolve) => setTimeout(resolve, 1));
+	});
+
 	it("re-wraps an editor component that loads after Zentui", async () => {
 		const handlers = loadExtension();
 		const laterEditorFactory = () => ({

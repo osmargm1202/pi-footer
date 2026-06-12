@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Presupuesto - {{ project_name }}</title>
+  <link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <img class="logo" src="{{ logo_src }}" alt="{{ company_name }} logo">
+      </div>
+      <div class="meta">
+        <h1>Presupuesto</h1>
+        <p><strong>Empresa:</strong> {{ company_name }}</p>
+        <p><strong>Fecha:</strong> {{ created_at }}</p>
+        <p><strong>Vigencia:</strong> {{ valid_until }}</p>
+      </div>
+    </header>
+
+    <section class="summary">
+      <h2>{{ project_name }}</h2>
+      <p><strong>Cliente:</strong> {{ client_name }}</p>
+      <p><strong>Ubicación:</strong> {{ project_location }}</p>
+    </section>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Clave</th>
+          <th>Concepto</th>
+          <th>Cantidad</th>
+          <th>Unidad</th>
+          <th>P.U.</th>
+          <th>Importe</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ item_rows }}
+      </tbody>
+    </table>
+
+    <section class="totals">
+      <p><span>Subtotal</span><strong>{{ subtotal }}</strong></p>
+      <p><span>Impuesto</span><strong>{{ tax }}</strong></p>
+      <p class="grand"><span>Total</span><strong>{{ total }}</strong></p>
+    </section>
+
+    <section class="notes">
+      <h2>Notas</h2>
+      {{ notes }}
+    </section>
+  </main>
+</body>
+</html>

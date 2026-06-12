@@ -26,6 +26,12 @@ pi-footer brings two popular aesthetics to Pi:
 - Third-party Pi extension statuses from `ctx.ui.setStatus()` can be shown on the left,
   middle, or right side, or hidden per status key from `/pi-footer`
 
+### Skills
+
+- Bundles ORGM/Osmar skills under `skills/` so `pi-footer` owns the visual skill hook and the skill package payload together.
+- Exposes skills through the Pi manifest: `pi.skills = ["./skills"]`.
+- Footer skill chips show `/skill:<name>` and `SKILL.md` reads as loading, loaded, or error.
+
 ### Editor (Opencode-inspired)
 
 - Bordered input box with configurable accent rail and border colors

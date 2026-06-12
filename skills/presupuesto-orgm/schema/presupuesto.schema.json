@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://or-gm.com/schemas/presupuesto.schema.json",
+  "title": "Presupuesto ORGM full structure",
+  "type": "object",
+  "required": ["project", "currency", "taxes", "metadata", "partidas", "indirectos", "consideraciones"],
+  "properties": {
+    "company": {"enum": ["orgm", "integra", "dapec"]},
+    "project": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string"},
+        "voltage": {"type": "string"},
+        "client": {"type": "string"},
+        "documentTitle": {"type": "string"},
+        "revision": {"type": "string"},
+        "date": {"type": "string"},
+        "location": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "currency": {
+      "type": "object",
+      "required": ["base", "symbol"],
+      "properties": {
+        "base": {"type": "string"},
+        "symbol": {"type": "string"},
+        "usdRate": {"type": "number"},
+        "showUsdConversion": {"type": "boolean"},
+        "rateSource": {"type": "string"},
+        "rateKey": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "taxes": {
+      "type": "object",
+      "required": ["itbisPercent"],
+      "properties": {"itbisPercent": {"type": "number"}},
+      "additionalProperties": true
+    },
+    "metadata": {"type": "object", "additionalProperties": true},
+    "partidas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "title", "subcategories"],
+        "properties": {
+          "code": {"type": "string"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "consideraciones": {"type": "array", "items": {"type": "string"}},
+          "subcategories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "title", "items"],
+              "properties": {
+                "code": {"type": "string"},
+                "title": {"type": "string"},
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["code", "description", "unit", "quantity", "unitPrice"],
+                    "properties": {
+                      "code": {"type": "string"},
+                      "description": {"type": "string"},
+                      "unit": {"type": "string"},
+                      "quantity": {"type": "number"},
+                      "unitPrice": {"type": "number"},
+                      "sourceId": {"type": "string"},
+                      "basis": {"type": "string"}
+                    },
+                    "additionalProperties": true
+                  }
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "indirectos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "value"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"enum": ["percent", "fixed"]},
+          "value": {"type": "number"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "consideraciones": {
+      "type": "object",
+      "properties": {"generales": {"type": "array", "items": {"type": "string"}}},
+      "additionalProperties": true
+    },
+    "totals": {"type": "object", "additionalProperties": true}
+  },
+  "additionalProperties": true
+}

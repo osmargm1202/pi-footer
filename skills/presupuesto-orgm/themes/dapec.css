@@ -1,0 +1,10 @@
+@import url('integra.css');
+:root {
+  --primary: #0f766e;
+  --secondary: #075985;
+  --accent: #84cc16;
+  --summary-accent-bg: #ecfdf5;
+  --summary-accent-ink: #134e4a;
+  --summary-accent-line: #84cc16;
+  --soft: #f0fdfa;
+}

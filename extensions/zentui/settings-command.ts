@@ -135,7 +135,7 @@ function featurePatch(id: FeatureSettingId, value: FeatureState): Partial<UiFeat
 }
 
 function usageText(): string {
-	return "Usage: /pi-footer [editor|statusline|copy-friendly] [enable|disable|toggle]";
+	return "Usage: /orgm-footer [editor|statusline|copy-friendly] [enable|disable|toggle]";
 }
 
 function featureNotification(
@@ -298,8 +298,8 @@ function withSectionFooter(lines: string[], theme: ExtensionContext["ui"]["theme
 }
 
 export function registerZentuiSettingsCommand(pi: ExtensionAPI, deps: SettingsCommandDeps): void {
-	pi.registerCommand("pi-footer", {
-		description: "Configure Zentui",
+	pi.registerCommand("orgm-footer", {
+		description: "Configure ORGM footer/Zentui UI",
 		getArgumentCompletions: argumentCompletions,
 		handler: async (_args, ctx) => {
 			const args = typeof _args === "string" ? _args : "";

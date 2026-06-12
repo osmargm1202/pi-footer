@@ -1614,11 +1614,12 @@ describe("Pi docs compliance", () => {
 		expect(rendered).toContain("[error]────");
 	});
 
-	it("registers the Zentui settings command", () => {
+	it("registers the ORGM footer settings command", () => {
 		const commands = new Map<string, unknown>();
 		loadExtension({ commands });
 
-		expect(commands.has("pi-footer")).toBe(true);
+		expect(commands.has("orgm-footer")).toBe(true);
+		expect(commands.has("pi-footer")).toBe(false);
 	});
 
 	it("does not use interactive UI when the Zentui settings command has no UI", async () => {

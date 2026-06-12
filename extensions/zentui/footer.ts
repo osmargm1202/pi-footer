@@ -4,6 +4,7 @@ import type { PolishedTuiConfig } from "./config";
 import { type ExtensionStatusSegment, collectExtensionStatusSegments } from "./extension-status";
 import { formatCwdLabel, formatRuntimeSegment } from "./format";
 import { formatOrgmStatusLine } from "./orgm-status";
+import { renderSkillChipRows } from "./skill-status";
 import type { FooterState } from "./state";
 import { renderStyleForSource } from "./style";
 
@@ -208,8 +209,16 @@ export function installFooter(
 					config.colors.runtimePrefix,
 					colorSource,
 				);
+				const timerLabel = state.timerLabel
+					? renderStyleForSource(
+							theme,
+							colorSource,
+							config.colors.extensionStatus,
+							state.timerLabel,
+						)
+					: "";
 
-				const left = [cwdLabel, branchLabel, runtimeLabel].filter(Boolean).join(" ");
+				const left = [cwdLabel, branchLabel, runtimeLabel, timerLabel].filter(Boolean).join(" ");
 				const right = [
 					renderStyleForSource(theme, colorSource, contextColor, state.contextLabel),
 					renderStyleForSource(theme, colorSource, config.colors.tokens, state.tokenLabel),
@@ -233,17 +242,36 @@ export function installFooter(
 					innerWidth,
 				);
 				const framed = width > 2 ? ` ${truncateToWidth(content, width - 2, "")} ` : content;
+				const lines = [truncateToWidth(framed, width, "")];
 				const orgmStatus = formatOrgmStatusLine(state.orgmStatus);
-				if (!orgmStatus) return [truncateToWidth(framed, width, "")];
-				const styledOrgmStatus = renderStyleForSource(
-					theme,
-					colorSource,
-					config.colors.extensionStatus,
-					orgmStatus,
-				);
-				const orgmLine =
-					width > 2 ? ` ${truncateToWidth(styledOrgmStatus, width - 2, "")} ` : styledOrgmStatus;
-				return [truncateToWidth(framed, width, ""), truncateToWidth(orgmLine, width, "")];
+				if (orgmStatus) {
+					const styledOrgmStatus = renderStyleForSource(
+						theme,
+						colorSource,
+						config.colors.extensionStatus,
+						orgmStatus,
+					);
+					const orgmLine =
+						width > 2 ? ` ${truncateToWidth(styledOrgmStatus, width - 2, "")} ` : styledOrgmStatus;
+					lines.push(truncateToWidth(orgmLine, width, ""));
+				}
+				if (state.skillStatuses.size > 0) {
+					lines.push(
+						...renderSkillChipRows(state.skillStatuses, width, (kind, text) => {
+							if (kind === "skillLoading") {
+								return renderStyleForSource(theme, colorSource, config.colors.contextWarning, text);
+							}
+							if (kind === "skillError") {
+								return renderStyleForSource(theme, colorSource, config.colors.contextError, text);
+							}
+							if (kind === "skillBorder" || kind === "skillGap") {
+								return renderStyleForSource(theme, colorSource, config.colors.separator, text);
+							}
+							return renderStyleForSource(theme, colorSource, config.colors.extensionStatus, text);
+						}),
+					);
+				}
+				return lines;
 			},
 		};
 	});

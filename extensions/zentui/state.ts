@@ -9,6 +9,7 @@ import {
 import type { GitStatusSummary } from "./git";
 import type { OrgmStatusState } from "./orgm-status";
 import type { RuntimeInfo } from "./runtime";
+import type { SkillStatus } from "./skill-status";
 
 export type FooterState = GitStatusSummary & {
 	modelLabel: string;
@@ -18,6 +19,8 @@ export type FooterState = GitStatusSummary & {
 	costLabel: string;
 	runtime?: RuntimeInfo;
 	orgmStatus: OrgmStatusState;
+	timerLabel: string;
+	skillStatuses: Map<string, SkillStatus>;
 };
 
 export function createInitialState(gitDefaults: GitStatusSummary): FooterState {
@@ -29,6 +32,8 @@ export function createInitialState(gitDefaults: GitStatusSummary): FooterState {
 		costLabel: "$0.000",
 		runtime: undefined,
 		orgmStatus: { title: "", caveman: null },
+		timerLabel: "",
+		skillStatuses: new Map<string, SkillStatus>(),
 		...gitDefaults,
 	};
 }

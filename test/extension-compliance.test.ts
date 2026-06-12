@@ -891,6 +891,42 @@ describe("Pi docs compliance", () => {
 		expect(footer?.render(120).join("\n")).toContain("[muted]");
 	});
 
+	it("renders migrated minimal timer and skill hook state in the footer", () => {
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			cwd: "/tmp/project",
+			ui: {
+				theme: makeTheme(),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+				setEditorComponent() {},
+			},
+		});
+		const state = createInitialState(emptyGitStatus());
+		state.contextLabel = "1%/200k";
+		state.tokenLabel = "↑1 ↓2";
+		state.costLabel = "$0.001";
+		state.timerLabel = "✓ 3s";
+		state.skillStatuses.set("brainstorming", "loaded");
+		state.skillStatuses.set("tdd", "error");
+
+		installFooter(ctx as never, state, () => defaultConfig, {
+			setRequestRender() {},
+			scheduleProjectRefresh() {},
+		});
+
+		const footer = footerFactory?.({ requestRender() {} }, makeTheme(), {
+			onBranchChange: () => () => {},
+			getExtensionStatuses: () => new Map<string, string>(),
+		});
+		const rendered = footer?.render(160).join("\n") ?? "";
+
+		expect(rendered).toContain("✓ 3s");
+		expect(rendered).toContain("brainstorming");
+		expect(rendered).toContain("tdd!");
+	});
+
 	it("renders third-party statuses on the right by default in sorted order", () => {
 		let footerFactory: FooterFactory | undefined;
 		const ctx = makeContext({

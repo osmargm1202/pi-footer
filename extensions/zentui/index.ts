@@ -1,8 +1,9 @@
-import type {
-	ExtensionAPI,
-	ExtensionContext,
-	KeybindingsManager,
-	Theme,
+import {
+	type ExtensionAPI,
+	type ExtensionContext,
+	type KeybindingsManager,
+	type Theme,
+	isToolCallEventType,
 } from "@earendil-works/pi-coding-agent";
 import type { EditorTheme, TUI } from "@earendil-works/pi-tui";
 import {
@@ -36,6 +37,7 @@ import {
 import { readRuntimeInfo } from "./runtime";
 import { installSelectorBorderStyle } from "./selector-border";
 import { registerZentuiSettingsCommand } from "./settings-command";
+import { type SkillStatus, getSkillNameFromPath } from "./skill-status";
 import { type FooterState, createInitialState, syncState } from "./state";
 import { PolishedEditor, WrappedPolishedEditor } from "./ui";
 import { installUserMessageStyle } from "./user-message";
@@ -84,8 +86,44 @@ export default function (pi: ExtensionAPI) {
 	let installedEditorFactory: EditorFactory | undefined;
 	let wrappedEditorFactory: EditorFactory | undefined;
 	let prototypePatchesInstalled = false;
+	let timerStartedAt = 0;
+	let timerHasError = false;
+	let timerHandle: ReturnType<typeof setInterval> | undefined;
+	const pendingSkillReads = new Map<string, string>();
 
 	const refresh = () => requestFooterRender?.();
+	const formatDuration = (ms: number): string => {
+		const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+		const hours = Math.floor(totalSeconds / 3600);
+		const minutes = Math.floor((totalSeconds % 3600) / 60);
+		const seconds = totalSeconds % 60;
+		if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+		if (minutes > 0) return `${minutes}m ${seconds}s`;
+		return `${seconds}s`;
+	};
+	const setTimerLabel = (icon: "⏱" | "✓" | "✕") => {
+		if (timerStartedAt === 0) return;
+		state.timerLabel = `${icon} ${formatDuration(Date.now() - timerStartedAt)}`;
+		refresh();
+	};
+	const stopTimer = () => {
+		if (timerHandle) clearInterval(timerHandle);
+		timerHandle = undefined;
+	};
+	const clearSkillStatuses = () => {
+		state.skillStatuses.clear();
+		pendingSkillReads.clear();
+		refresh();
+	};
+	const setSkillStatus = (name: string, status: SkillStatus) => {
+		const skillName = name.trim();
+		if (!skillName) return;
+		const previous = state.skillStatuses.get(skillName);
+		if (previous === status) return;
+		if (status === "loading" && previous === "loaded") return;
+		state.skillStatuses.set(skillName, status);
+		refresh();
+	};
 	const getActiveTheme = () => activeTheme;
 	const getCurrentConfig = () => currentConfig;
 	const getThinkingLevel = () => pi.getThinkingLevel();
@@ -304,6 +342,8 @@ export default function (pi: ExtensionAPI) {
 	const cleanupUi = (ctx?: ExtensionContext) => {
 		uninstallPrototypePatches();
 		stopProjectRefresh();
+		stopTimer();
+		clearSkillStatuses();
 		requestFooterRender = undefined;
 		getActiveExtensionStatuses = () => new Map();
 		if (ctx && isTuiContext(ctx)) {
@@ -343,6 +383,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
+		pendingSkillReads.clear();
 		installUi(ctx);
 		scheduleEditorReconciliation(ctx);
 	});
@@ -380,8 +421,57 @@ export default function (pi: ExtensionAPI) {
 		cleanupUi(ctx);
 	});
 
+	pi.on("input", async (event, ctx) => {
+		if (!ctx.hasUI) return;
+		const match = event.text.trimStart().match(/^\/skill:([^\s]+)/);
+		if (!match) return;
+		setSkillStatus(match[1] ?? "", "loaded");
+	});
+
+	pi.on("tool_call", async (event, ctx) => {
+		if (!ctx.hasUI) return;
+		if (!isToolCallEventType("read", event)) return;
+		const skillName = getSkillNameFromPath(event.input.path);
+		if (!skillName) return;
+		pendingSkillReads.set(event.toolCallId, skillName);
+		setSkillStatus(skillName, "loading");
+	});
+
+	pi.on("before_agent_start", async (_event, ctx) => {
+		if (!ctx.hasUI) return;
+		stopTimer();
+		timerStartedAt = Date.now();
+		timerHasError = false;
+		setTimerLabel("⏱");
+		timerHandle = setInterval(() => setTimerLabel(timerHasError ? "✕" : "⏱"), 1000);
+	});
+
+	pi.on("tool_execution_end", async (event, ctx) => {
+		if (!ctx.hasUI) return;
+		const skillName = pendingSkillReads.get(event.toolCallId);
+		if (skillName) {
+			pendingSkillReads.delete(event.toolCallId);
+			setSkillStatus(skillName, event.isError ? "error" : "loaded");
+		}
+		if (!event.isError) return;
+		timerHasError = true;
+		setTimerLabel("✕");
+	});
+
+	pi.on("after_provider_response", async (event, ctx) => {
+		if (!ctx.hasUI || event.status < 400) return;
+		timerHasError = true;
+		setTimerLabel("✕");
+	});
+
 	pi.on("agent_start", syncInteractiveState);
-	pi.on("agent_end", syncInteractiveAndProjectState);
+	pi.on("agent_end", async (_event, ctx) => {
+		if (ctx.hasUI) {
+			stopTimer();
+			setTimerLabel(timerHasError ? "✕" : "✓");
+		}
+		refreshInteractiveState(ctx, true);
+	});
 	pi.on("model_select", syncInteractiveState);
 	pi.on("thinking_level_select", syncInteractiveState);
 	pi.on("message_end", syncInteractiveAndProjectState);

@@ -1,9 +1,0 @@
-data/presupuesto.db
-scripts/__pycache__/
-tests/__pycache__/
-assets/*.png
-assets/*.jpg
-assets/*.jpeg
-assets/*.webp
-output/*
-!output/.gitignore

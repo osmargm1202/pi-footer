@@ -23,14 +23,9 @@ pi-footer brings two popular aesthetics to Pi:
 - `via  v5.5.0` — runtime detection with version and Starship-style Nerd Font runtime/language modules
 - Right side shows context usage, token counts, and cost
 - Optional ORGM line displays current session title and caveman status, e.g. `Build footer · caveman:full`
+- Skill chips show `/skill:<name>` and `SKILL.md` reads as loading, loaded, or error as skills are used during the session
 - Third-party Pi extension statuses from `ctx.ui.setStatus()` can be shown on the left,
   middle, or right side, or hidden per status key from `/pi-footer`
-
-### Skills
-
-- Bundles ORGM/Osmar skills under `skills/` so `pi-footer` owns the visual skill hook and the skill package payload together.
-- Exposes skills through the Pi manifest: `pi.skills = ["./skills"]`.
-- Footer skill chips show `/skill:<name>` and `SKILL.md` reads as loading, loaded, or error.
 
 ### Editor (Opencode-inspired)
 

@@ -13,7 +13,7 @@
 		"url": "https://github.com/osmargm1202/pi-footer/issues"
 	},
 	"keywords": ["pi-package", "pi-extension", "pi-theme", "starship", "tui"],
-	"files": ["extensions", "skills", "README.md"],
+	"files": ["extensions"],
 	"scripts": {
 		"lint": "biome check .",
 		"typecheck": "tsc --noEmit",
@@ -33,8 +33,7 @@
 	},
 	"pi": {
 		"extensions": ["./extensions"],
-		"image": "https://raw.githubusercontent.com/osmargm1202/pi-footer/main/assets/zentui.png",
-		"skills": ["./skills"]
+		"image": "https://raw.githubusercontent.com/osmargm1202/pi-footer/main/assets/zentui.png"
 	},
 	"publishConfig": {
 		"access": "public"

@@ -1,4 +1,0 @@
-sku,category,description,unit,unit_price,currency,source,updated_at,tags
-SER-LEV-TOPO,topografia,Levantamiento topografico de obra,servicio,260.00,USD,seed-example,2026-05-27,topografia levantamiento servicio
-SER-LIM-OBRA,limpieza,Limpieza fina de area de trabajo,m2,1.10,USD,seed-example,2026-05-27,limpieza obra servicio
-SER-FLE-LOCAL,logistica,Flete local de materiales,viaje,85.00,USD,seed-example,2026-05-27,flete logistica transporte

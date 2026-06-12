@@ -223,8 +223,17 @@ function loadExtension(options: { thinkingLevel?: string; commands?: Map<string,
 }
 
 async function emit(handlers: Map<string, Handler[]>, eventName: string, ctx: unknown) {
+	await emitEvent(handlers, eventName, {}, ctx);
+}
+
+async function emitEvent(
+	handlers: Map<string, Handler[]>,
+	eventName: string,
+	event: unknown,
+	ctx: unknown,
+) {
 	for (const handler of handlers.get(eventName) ?? []) {
-		await handler({}, ctx);
+		await handler(event, ctx);
 	}
 }
 
@@ -925,6 +934,61 @@ describe("Pi docs compliance", () => {
 		expect(rendered).toContain("✓ 3s");
 		expect(rendered).toContain("brainstorming");
 		expect(rendered).toContain("tdd!");
+	});
+
+	it("tracks skills as they appear through input and SKILL.md read events", async () => {
+		const handlers = loadExtension();
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			cwd: "/tmp/project",
+			ui: {
+				theme: makeTheme(),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+				setEditorComponent() {},
+			},
+		});
+
+		await emit(handlers, "session_start", ctx);
+		await emitEvent(handlers, "input", { text: "/skill:brainstorming" }, ctx);
+		await emitEvent(
+			handlers,
+			"tool_call",
+			{
+				toolCallId: "read-tdd-skill",
+				toolName: "read",
+				input: { path: "/home/osmarg/.pi/agent/skills/test-driven-development/SKILL.md" },
+			},
+			ctx,
+		);
+
+		let footer = footerFactory?.({ requestRender() {} }, makeTheme(), {
+			onBranchChange: () => () => {},
+			getExtensionStatuses: () => new Map<string, string>(),
+		});
+		let rendered = footer?.render(160).join("\n") ?? "";
+
+		expect(rendered).toContain("brainstorming");
+		expect(rendered).toContain("test-driven-development…");
+
+		await emitEvent(
+			handlers,
+			"tool_execution_end",
+			{ toolCallId: "read-tdd-skill", toolName: "read", isError: false },
+			ctx,
+		);
+
+		footer = footerFactory?.({ requestRender() {} }, makeTheme(), {
+			onBranchChange: () => () => {},
+			getExtensionStatuses: () => new Map<string, string>(),
+		});
+		rendered = footer?.render(160).join("\n") ?? "";
+
+		expect(rendered).toContain("test-driven-development");
+		expect(rendered).not.toContain("test-driven-development…");
+		footer?.dispose?.();
+		await emit(handlers, "session_shutdown", ctx);
 	});
 
 	it("renders third-party statuses on the right by default in sorted order", () => {

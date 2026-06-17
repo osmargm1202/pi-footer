@@ -28,6 +28,8 @@ import {
 	applyTitleState,
 	restoreOrgmStatusState,
 } from "./orgm-status";
+
+const PI_RENAME_EVENT = "pi-rename:name-changed";
 import {
 	type ScheduleProjectRefreshOptions,
 	type StopProjectRefreshInterval,
@@ -127,6 +129,8 @@ export default function (pi: ExtensionAPI) {
 	const getActiveTheme = () => activeTheme;
 	const getCurrentConfig = () => currentConfig;
 	const getThinkingLevel = () => pi.getThinkingLevel();
+	let _sessionName = "";
+	const getSessionLabel = () => _sessionName || undefined;
 	const syncFooterState = (ctx: ExtensionContext) =>
 		syncState(state, ctx, currentConfig.icons.cacheHit);
 
@@ -186,6 +190,7 @@ export default function (pi: ExtensionAPI) {
 					providerLabel: state.providerLabel,
 				}),
 				getThinkingLevel,
+				getSessionLabel,
 			)) as ZentuiEditorFactory;
 		factory[ZENTUI_EDITOR_FACTORY] = true;
 		return factory;
@@ -205,6 +210,7 @@ export default function (pi: ExtensionAPI) {
 					providerLabel: state.providerLabel,
 				}),
 				getThinkingLevel,
+				getSessionLabel,
 			)) as ZentuiEditorFactory;
 		factory[ZENTUI_EDITOR_FACTORY] = true;
 		factory[ZENTUI_EDITOR_BASE_FACTORY] = baseFactory;
@@ -380,6 +386,13 @@ export default function (pi: ExtensionAPI) {
 	pi.events?.on(TITLE_STATE_EVENT, (data: unknown) => {
 		applyTitleState(state.orgmStatus, data);
 		refresh();
+	});
+
+	pi.events?.on(PI_RENAME_EVENT, (data: unknown) => {
+		if (typeof (data as { name?: unknown })?.name === "string") {
+			_sessionName = ((data as { name: string }).name).trim();
+			refresh();
+		}
 	});
 
 	pi.on("session_start", async (_event, ctx) => {

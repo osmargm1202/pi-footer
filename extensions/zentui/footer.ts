@@ -138,6 +138,7 @@ export function installFooter(
 ): void {
 	ctx.ui.setFooter((tui, theme, footerData) => {
 		hooks.setRequestRender(() => tui.requestRender());
+		tui.requestRender();
 		hooks.setExtensionStatusesGetter?.(() => footerData.getExtensionStatuses());
 		const unsubscribeBranch = footerData.onBranchChange(() => {
 			hooks.scheduleProjectRefresh(ctx);

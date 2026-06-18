@@ -30,6 +30,7 @@ import {
 } from "./orgm-status";
 
 const PI_RENAME_EVENT = "pi-rename:name-changed";
+const PI_LOOP_EVENT = "pi-loop:state-changed";
 import {
 	type ScheduleProjectRefreshOptions,
 	type StopProjectRefreshInterval,
@@ -131,6 +132,8 @@ export default function (pi: ExtensionAPI) {
 	const getThinkingLevel = () => pi.getThinkingLevel();
 	let _sessionName = "";
 	const getSessionLabel = () => _sessionName || undefined;
+	let _loopLabel = "";
+	const getLoopLabel = () => _loopLabel || undefined;
 	const syncFooterState = (ctx: ExtensionContext) =>
 		syncState(state, ctx, currentConfig.icons.cacheHit);
 
@@ -191,6 +194,7 @@ export default function (pi: ExtensionAPI) {
 				}),
 				getThinkingLevel,
 				getSessionLabel,
+				getLoopLabel,
 			)) as ZentuiEditorFactory;
 		factory[ZENTUI_EDITOR_FACTORY] = true;
 		return factory;
@@ -211,6 +215,7 @@ export default function (pi: ExtensionAPI) {
 				}),
 				getThinkingLevel,
 				getSessionLabel,
+				getLoopLabel,
 			)) as ZentuiEditorFactory;
 		factory[ZENTUI_EDITOR_FACTORY] = true;
 		factory[ZENTUI_EDITOR_BASE_FACTORY] = baseFactory;
@@ -393,6 +398,16 @@ export default function (pi: ExtensionAPI) {
 			_sessionName = ((data as { name: string }).name).trim();
 			refresh();
 		}
+	});
+
+	pi.events?.on(PI_LOOP_EVENT, (data: unknown) => {
+		const d = data as { active?: boolean; iteration?: number; maxIterations?: number };
+		if (d?.active && typeof d.iteration === "number" && typeof d.maxIterations === "number") {
+			_loopLabel = `⟳ LOOP:${d.iteration}/${d.maxIterations}`;
+		} else {
+			_loopLabel = "";
+		}
+		refresh();
 	});
 
 	pi.on("session_start", async (_event, ctx) => {

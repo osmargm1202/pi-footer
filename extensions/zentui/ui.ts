@@ -58,6 +58,7 @@ type PolishedFrameOptions = {
 	modelMeta: EditorMeta;
 	thinkingLevel: string | undefined;
 	sessionLabel?: string;
+	loopLabel?: string;
 	rightStatus?: string;
 };
 
@@ -222,6 +223,7 @@ function renderPolishedFrame({
 	modelMeta,
 	thinkingLevel,
 	sessionLabel,
+	loopLabel,
 	rightStatus,
 }: PolishedFrameOptions): string[] {
 	if (width <= 2) return clampRenderedLines(baseRendered, width);
@@ -292,6 +294,11 @@ function renderPolishedFrame({
 		const fgAnsi = uiTheme.getFgAnsi("text");
 		metaParts.push(`${bgAnsi}${fgAnsi} ${sessionLabel} \x1b[0m`);
 	}
+	if (loopLabel) {
+		const bgAnsi = uiTheme.getBgAnsi("selectedBg");
+		const fgAnsi = uiTheme.getFgAnsi("text");
+		metaParts.push(`${bgAnsi}${fgAnsi} ${loopLabel} \x1b[0m`);
+	}
 	const meta = metaParts.filter(Boolean).join(safeThemeFg(uiTheme, "border", "  "));
 	const copyFriendlyMeta = composeMetadataLine(meta, rightStatus, Math.max(0, width - 1));
 	const railedMeta = composeMetadataLine(meta, rightStatus, innerWidth);
@@ -338,6 +345,7 @@ export class PolishedEditor extends CustomEditor {
 	private readonly getModelMeta: () => EditorMeta;
 	private readonly getThinkingLevel: () => string | undefined;
 	private readonly getSessionLabel: () => string | undefined;
+	private readonly getLoopLabel: () => string | undefined;
 	private readonly getConfig: () => PolishedTuiConfig;
 	private readonly uiTheme: Theme;
 
@@ -350,6 +358,7 @@ export class PolishedEditor extends CustomEditor {
 		getModelMeta: () => EditorMeta,
 		getThinkingLevel: () => string | undefined,
 		getSessionLabel: () => string | undefined = () => undefined,
+		getLoopLabel: () => string | undefined = () => undefined,
 	) {
 		super(tui, theme, keybindings, { paddingX: 0 });
 		this.borderColor = (text: string) => safeThemeFg(uiTheme, "border", text);
@@ -358,6 +367,7 @@ export class PolishedEditor extends CustomEditor {
 		this.getModelMeta = getModelMeta;
 		this.getThinkingLevel = getThinkingLevel;
 		this.getSessionLabel = getSessionLabel;
+		this.getLoopLabel = getLoopLabel;
 	}
 
 	render(width: number): string[] {
@@ -378,6 +388,7 @@ export class PolishedEditor extends CustomEditor {
 			modelMeta: this.getModelMeta(),
 			thinkingLevel: this.getThinkingLevel(),
 			sessionLabel: this.getSessionLabel(),
+			loopLabel: this.getLoopLabel(),
 		});
 	}
 }
@@ -390,6 +401,7 @@ export class WrappedPolishedEditor implements EditorComponent {
 		private readonly getModelMeta: () => EditorMeta,
 		private readonly getThinkingLevel: () => string | undefined,
 		private readonly getSessionLabel: () => string | undefined = () => undefined,
+		private readonly getLoopLabel: () => string | undefined = () => undefined,
 	) {}
 
 	get focused(): boolean {
@@ -486,6 +498,7 @@ export class WrappedPolishedEditor implements EditorComponent {
 			modelMeta: this.getModelMeta(),
 			thinkingLevel: this.getThinkingLevel(),
 			sessionLabel: this.getSessionLabel(),
+			loopLabel: this.getLoopLabel(),
 			rightStatus: vimStatus,
 		});
 	}

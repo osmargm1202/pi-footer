@@ -1618,7 +1618,7 @@ describe("Pi docs compliance", () => {
 		const commands = new Map<string, unknown>();
 		loadExtension({ commands });
 
-		expect(commands.has("orgm-footer")).toBe(true);
+		expect(commands.has("footer")).toBe(true);
 		expect(commands.has("pi-footer")).toBe(false);
 	});
 

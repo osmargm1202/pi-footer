@@ -1078,6 +1078,45 @@ describe("Pi docs compliance", () => {
 		expect(rendered).not.toContain("hidden-status");
 	});
 
+	it("renders LSP statuses on their own footer line", () => {
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			cwd: "/tmp/project",
+			ui: {
+				theme: makeTheme(),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+				setEditorComponent() {},
+			},
+		});
+		const state = createInitialState(emptyGitStatus());
+		state.contextLabel = "1%/200k";
+		state.tokenLabel = "↑1 ↓2";
+		state.costLabel = "$0.001";
+
+		installFooter(ctx as never, state, () => defaultConfig, {
+			setRequestRender() {},
+			scheduleProjectRefresh() {},
+		});
+
+		const footer = footerFactory?.({ requestRender() {} }, makeTheme(), {
+			onBranchChange: () => () => {},
+			getExtensionStatuses: () =>
+				new Map<string, string>([
+					["alpha", "A"],
+					["lsp", "LSP Active: bash, python, go, ast-grep, typos, opengrep"],
+				]),
+		});
+		const rendered = footer?.render(120) ?? [];
+
+		expect(rendered.length).toBeGreaterThanOrEqual(2);
+		expect(rendered[0]).toContain("A");
+		expect(rendered[0]).not.toContain("LSP Active:");
+		expect(rendered[1]).toContain("LSP Active: bash, python, go");
+		expect(visibleWidth(rendered[1] ?? "")).toBeLessThanOrEqual(120);
+	});
+
 	it("strips plugin ANSI and control sequences before rendering third-party statuses", () => {
 		let footerFactory: FooterFactory | undefined;
 		const ctx = makeContext({

@@ -395,7 +395,7 @@ export default function (pi: ExtensionAPI) {
 
 	pi.events?.on(PI_RENAME_EVENT, (data: unknown) => {
 		if (typeof (data as { name?: unknown })?.name === "string") {
-			_sessionName = ((data as { name: string }).name).trim();
+			_sessionName = (data as { name: string }).name.trim();
 			refresh();
 		}
 	});

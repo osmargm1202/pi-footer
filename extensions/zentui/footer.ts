@@ -6,7 +6,31 @@ import { formatCwdLabel, formatRuntimeSegment } from "./format";
 import { formatOrgmStatusLine } from "./orgm-status";
 import { renderSkillChipRows } from "./skill-status";
 import type { FooterState } from "./state";
-import { renderStyleForSource } from "./style";
+import { type ThemeLike, renderStyleForSource } from "./style";
+
+function isLspStatusSegment(segment: ExtensionStatusSegment): boolean {
+	const key = segment.key.toLowerCase();
+	const text = segment.text.toLowerCase();
+	return (
+		key.includes("lsp") || text.startsWith("lsp") || text.includes(" lsp") || text.includes("-lsp")
+	);
+}
+
+function partitionExtensionStatuses(exts: ExtensionStatusSegment[]): {
+	inline: ExtensionStatusSegment[];
+	lsp: ExtensionStatusSegment[];
+} {
+	const inline: ExtensionStatusSegment[] = [];
+	const lsp: ExtensionStatusSegment[] = [];
+	for (const status of exts) {
+		if (isLspStatusSegment(status)) {
+			lsp.push(status);
+		} else {
+			inline.push(status);
+		}
+	}
+	return { inline, lsp };
+}
 
 function joinStatusTexts(statusTexts: string[], separator: string): string {
 	return statusTexts.filter(Boolean).join(separator);
@@ -136,7 +160,20 @@ export function installFooter(
 		setExtensionStatusesGetter?: (fn: (() => ReadonlyMap<string, string>) | undefined) => void;
 	},
 ): void {
-	ctx.ui.setFooter((tui, theme, footerData) => {
+	type FooterTui = { requestRender: () => void };
+	type FooterData = {
+		onBranchChange: (listener: () => void) => () => void;
+		getExtensionStatuses: () => ReadonlyMap<string, string>;
+	};
+	const footerRenderer: (
+		tui: FooterTui,
+		theme: ThemeLike,
+		footerData: FooterData,
+	) => {
+		dispose: () => void;
+		render(width: number): string[];
+		invalidate: () => void;
+	} = (tui, theme, footerData) => {
 		hooks.setRequestRender(() => tui.requestRender());
 		tui.requestRender();
 		hooks.setExtensionStatusesGetter?.(() => footerData.getExtensionStatuses());
@@ -233,17 +270,31 @@ export function installFooter(
 					segment.colorMode === "original"
 						? segment.text
 						: renderStyleForSource(theme, colorSource, config.colors.extensionStatus, segment.text);
+				const leftPartition = partitionExtensionStatuses(extensionStatuses.left);
+				const middlePartition = partitionExtensionStatuses(extensionStatuses.middle);
+				const rightPartition = partitionExtensionStatuses(extensionStatuses.right);
+				const lspStatuses = [
+					...leftPartition.lsp,
+					...middlePartition.lsp,
+					...rightPartition.lsp,
+				].map(renderExtensionStatus);
+				const lspLine = fitStatusTexts(lspStatuses, innerWidth, separator);
+				const framedLsp = width > 2 ? ` ${truncateToWidth(lspLine, width - 2, "")} ` : lspLine;
 				const content = composeFooterContent(
 					left,
 					right,
-					extensionStatuses.left.map(renderExtensionStatus),
-					extensionStatuses.middle.map(renderExtensionStatus),
-					extensionStatuses.right.map(renderExtensionStatus),
+					leftPartition.inline.map(renderExtensionStatus),
+					middlePartition.inline.map(renderExtensionStatus),
+					rightPartition.inline.map(renderExtensionStatus),
 					separator,
 					innerWidth,
 				);
 				const framed = width > 2 ? ` ${truncateToWidth(content, width - 2, "")} ` : content;
 				const lines = [truncateToWidth(framed, width, "")];
+				if (lspLine) {
+					lines.push(truncateToWidth(framedLsp, width, ""));
+				}
+
 				const orgmStatus = formatOrgmStatusLine(state.orgmStatus);
 				if (orgmStatus) {
 					const styledOrgmStatus = renderStyleForSource(
@@ -275,5 +326,7 @@ export function installFooter(
 				return lines;
 			},
 		};
-	});
+	};
+
+	ctx.ui.setFooter(footerRenderer);
 }

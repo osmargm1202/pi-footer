@@ -372,6 +372,44 @@ describe("Pi docs compliance", () => {
 		expect(editorFactory).toBeTypeOf("function");
 	});
 
+	it("does not start terminal-only timers or refreshes in RPC, JSON, or print mode", async () => {
+		vi.useFakeTimers();
+		try {
+			for (const mode of ["rpc", "json", "print"]) {
+				const handlers = loadExtension();
+				const getBranch = vi.fn(() => []);
+				const ctx = makeContext({ mode, hasUI: mode === "rpc", sessionManager: { getBranch } });
+				await emit(handlers, "session_start", ctx);
+				await emit(handlers, "before_agent_start", ctx);
+				await emit(handlers, "message_end", ctx);
+				await emit(handlers, "tool_execution_end", ctx);
+				expect(vi.getTimerCount()).toBe(0);
+				expect(getBranch).not.toHaveBeenCalled();
+				await emit(handlers, "session_shutdown", ctx);
+			}
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("cancels delayed editor reconciliation on shutdown and cleans up idempotently", async () => {
+		vi.useFakeTimers();
+		try {
+			const handlers = loadExtension();
+			const ctx = makeContext();
+			await emit(handlers, "session_start", ctx);
+			await emit(handlers, "session_shutdown", ctx);
+			await emit(handlers, "session_shutdown", ctx);
+			const laterFactory = vi.fn();
+			ctx.ui.setEditorComponent(laterFactory);
+			await vi.runAllTimersAsync();
+			expect(ctx.ui.getEditorComponent()).toBe(laterFactory);
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("does not install user-message rendering when ctx.hasUI is false", async () => {
 		const handlers = loadExtension();
 		const ctx = makeContext({ hasUI: false });
@@ -870,6 +908,32 @@ describe("Pi docs compliance", () => {
 		await emit(handlers, "session_shutdown", ctx);
 	});
 
+	it("uses a replacement theme in an existing footer without recreating its factory", () => {
+		let footerFactory: FooterFactory | undefined;
+		const ctx = makeContext({
+			ui: {
+				theme: makeTaggedTheme("first:"),
+				setFooter(factory: FooterFactory | undefined) {
+					footerFactory = factory;
+				},
+			},
+		});
+		installFooter(ctx as never, createInitialState(emptyGitStatus()), () => defaultConfig, {
+			setRequestRender() {},
+			scheduleProjectRefresh() {},
+		});
+		const footer = footerFactory?.({ requestRender() {} }, ctx.ui.theme, {
+			onBranchChange: () => () => {},
+			getExtensionStatuses: () => new Map(),
+		});
+		expect(footer?.render(120).join("\n")).toContain("[first:");
+		ctx.ui.theme = makeTaggedTheme("second:");
+		const rendered = footer?.render(120).join("\n");
+		expect(rendered).toContain("[second:");
+		expect(rendered).not.toContain("[first:");
+		footer?.dispose?.();
+	});
+
 	it("does not crash when config colors contain Starship modifiers", () => {
 		let footerFactory: FooterFactory | undefined;
 		const ctx = makeContext({
@@ -1271,6 +1335,43 @@ describe("Pi docs compliance", () => {
 		expect(lines.every((line) => visibleWidth(line) <= 1)).toBe(true);
 	});
 
+	it("uses a replacement theme in existing standalone and wrapped editors", () => {
+		let theme = makeTaggedTheme("first:");
+		const base = {
+			render: (width: number) => ["─".repeat(width), "hello", "─".repeat(width)],
+			invalidate() {},
+			handleInput() {},
+			getText: () => "hello",
+			setText() {},
+		};
+		const standalone = new PolishedEditor(
+			{ requestRender() {}, terminal: { rows: 24, cols: 120 } } as never,
+			{ borderColor: (text: string) => text, selectList: {} } as never,
+			{} as never,
+			() => theme,
+			() => defaultConfig,
+			() => ({ modelLabel: "model", providerLabel: "provider" }),
+			() => "off",
+		);
+		const wrapped = new WrappedPolishedEditor(
+			base,
+			() => theme,
+			() => defaultConfig,
+			() => ({ modelLabel: "model", providerLabel: "provider" }),
+			() => "off",
+		);
+		for (const editor of [standalone, wrapped]) {
+			expect(editor.render(120).join("\n")).toContain("[first:accent]model");
+		}
+		theme = makeTaggedTheme("second:");
+		for (const editor of [standalone, wrapped]) {
+			editor.invalidate();
+			const rendered = editor.render(120).join("\n");
+			expect(rendered).toContain("[second:accent]model");
+			expect(rendered).not.toContain("[first:");
+		}
+	});
+
 	it("renders editor rails with theme accent and borderMuted borders", () => {
 		const editor = new PolishedEditor(
 			{ requestRender() {}, terminal: { rows: 24, cols: 120 } } as never,
@@ -1380,6 +1481,19 @@ describe("Pi docs compliance", () => {
 		expect(rendered).toContain("[success]claude-sonnet");
 		expect(rendered).toContain("[syntaxKeyword]Anthropic");
 		expect(rendered).toContain("[thinkingHigh]high");
+	});
+
+	it("renders Pi 1.3.0 max thinking with its configured semantic color", () => {
+		const editor = new PolishedEditor(
+			{ requestRender() {}, terminal: { rows: 24, cols: 120 } } as never,
+			{ borderColor: (text: string) => text, selectList: {} } as never,
+			{} as never,
+			makeTaggedTheme(),
+			() => configWithColors({ editorThinkingMax: "thinkingMax" }),
+			() => ({ modelLabel: "model", providerLabel: "provider" }),
+			() => "max",
+		);
+		expect(editor.render(120).join("\n")).toContain("[thinkingMax]max");
 	});
 
 	it("uses the shared editorThinking color when a level-specific color is absent", () => {

@@ -173,7 +173,7 @@ export function installFooter(
 		dispose: () => void;
 		render(width: number): string[];
 		invalidate: () => void;
-	} = (tui, theme, footerData) => {
+	} = (tui, initialTheme, footerData) => {
 		hooks.setRequestRender(() => tui.requestRender());
 		tui.requestRender();
 		hooks.setExtensionStatusesGetter?.(() => footerData.getExtensionStatuses());
@@ -191,6 +191,8 @@ export function installFooter(
 			invalidate() {},
 			render(width: number): string[] {
 				if (width <= 0) return [""];
+				// Pi invalidates existing components on a theme change; it does not rerun this factory.
+				const theme = ctx.ui.theme ?? initialTheme;
 				const config = getConfig();
 				const colorSource = config.colorSources.starship;
 				const separator = renderStyleForSource(theme, colorSource, config.colors.separator, " | ");

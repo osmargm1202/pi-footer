@@ -85,6 +85,8 @@ function editorThinkingStyle(config: PolishedTuiConfig, level: string): string |
 			return config.colors.editorThinkingHigh ?? config.colors.editorThinking;
 		case "xhigh":
 			return config.colors.editorThinkingXhigh ?? config.colors.editorThinking;
+		case "max":
+			return config.colors.editorThinkingMax ?? config.colors.editorThinking;
 		default:
 			return config.colors.editorThinking;
 	}
@@ -347,13 +349,17 @@ export class PolishedEditor extends CustomEditor {
 	private readonly getSessionLabel: () => string | undefined;
 	private readonly getLoopLabel: () => string | undefined;
 	private readonly getConfig: () => PolishedTuiConfig;
-	private readonly uiTheme: Theme;
+	private readonly themeSource: Theme | (() => Theme);
+
+	private get uiTheme(): Theme {
+		return typeof this.themeSource === "function" ? this.themeSource() : this.themeSource;
+	}
 
 	constructor(
 		tui: TUI,
 		theme: EditorTheme,
 		keybindings: KeybindingsManager,
-		uiTheme: Theme,
+		uiTheme: Theme | (() => Theme),
 		getConfig: () => PolishedTuiConfig,
 		getModelMeta: () => EditorMeta,
 		getThinkingLevel: () => string | undefined,
@@ -361,8 +367,8 @@ export class PolishedEditor extends CustomEditor {
 		getLoopLabel: () => string | undefined = () => undefined,
 	) {
 		super(tui, theme, keybindings, { paddingX: 0 });
-		this.borderColor = (text: string) => safeThemeFg(uiTheme, "border", text);
-		this.uiTheme = uiTheme;
+		this.themeSource = uiTheme;
+		this.borderColor = (text: string) => safeThemeFg(this.uiTheme, "border", text);
 		this.getConfig = getConfig;
 		this.getModelMeta = getModelMeta;
 		this.getThinkingLevel = getThinkingLevel;
@@ -394,9 +400,13 @@ export class PolishedEditor extends CustomEditor {
 }
 
 export class WrappedPolishedEditor implements EditorComponent {
+	private get uiTheme(): Theme {
+		return typeof this.themeSource === "function" ? this.themeSource() : this.themeSource;
+	}
+
 	constructor(
 		private readonly base: WrappedEditor,
-		private readonly uiTheme: Theme,
+		private readonly themeSource: Theme | (() => Theme),
 		private readonly getConfig: () => PolishedTuiConfig,
 		private readonly getModelMeta: () => EditorMeta,
 		private readonly getThinkingLevel: () => string | undefined,

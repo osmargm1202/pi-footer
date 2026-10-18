@@ -13,6 +13,10 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.23.3", "24"]
 
     steps:
       - name: Checkout
@@ -21,14 +25,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Verify
         run: npm run verify
 
       - name: Dry-run pack
         run: npm run pack:check
+
+      - name: Audit dependencies
+        run: npm audit

@@ -78,7 +78,7 @@ export default function (pi: ExtensionAPI) {
 	const state: FooterState = createInitialState(emptyGitStatus());
 
 	let currentConfig: PolishedTuiConfig = loadConfig();
-	let activeTheme: Theme | undefined;
+	let activeTheme: (() => Theme) | undefined;
 	let requestFooterRender: (() => void) | undefined;
 	let getActiveExtensionStatuses: () => ReadonlyMap<string, string> = () => new Map();
 	let stopRefreshInterval: StopProjectRefreshInterval = () => {};
@@ -92,6 +92,8 @@ export default function (pi: ExtensionAPI) {
 	let timerStartedAt = 0;
 	let timerHasError = false;
 	let timerHandle: ReturnType<typeof setInterval> | undefined;
+	let reconciliationHandle: ReturnType<typeof setTimeout> | undefined;
+	let projectGeneration = 0;
 	const pendingSkillReads = new Map<string, string>();
 
 	const refresh = () => requestFooterRender?.();
@@ -127,7 +129,7 @@ export default function (pi: ExtensionAPI) {
 		state.skillStatuses.set(skillName, status);
 		refresh();
 	};
-	const getActiveTheme = () => activeTheme;
+	const getActiveTheme = () => activeTheme?.();
 	const getCurrentConfig = () => currentConfig;
 	const getThinkingLevel = () => pi.getThinkingLevel();
 	let _sessionName = "";
@@ -138,10 +140,12 @@ export default function (pi: ExtensionAPI) {
 		syncState(state, ctx, currentConfig.icons.cacheHit);
 
 	const refreshProjectState = async (ctx: ExtensionContext) => {
+		const generation = projectGeneration;
 		const [gitStatus, runtime] = await Promise.all([
 			readGitStatus(ctx.cwd),
 			readRuntimeInfo(ctx.cwd),
 		]);
+		if (generation !== projectGeneration) return;
 		Object.assign(state, gitStatus);
 		state.runtime = runtime;
 	};
@@ -151,13 +155,14 @@ export default function (pi: ExtensionAPI) {
 		projectRefreshScheduler.schedule(ctx, options);
 
 	const refreshInteractiveState = (ctx: ExtensionContext, project = false) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		syncFooterState(ctx);
 		if (project && currentConfig.features.statusLine) scheduleProjectRefresh(ctx);
 		refresh();
 	};
 
 	const stopProjectRefresh = () => {
+		projectGeneration += 1;
 		stopRefreshInterval();
 		stopRefreshInterval = () => {};
 		projectRefreshScheduler.stop();
@@ -186,7 +191,7 @@ export default function (pi: ExtensionAPI) {
 				tui,
 				theme,
 				keybindings,
-				ctx.ui.theme,
+				() => ctx.ui.theme,
 				getCurrentConfig,
 				() => ({
 					modelLabel: state.modelLabel,
@@ -207,7 +212,7 @@ export default function (pi: ExtensionAPI) {
 		const factory = ((tui: TUI, theme: EditorTheme, keybindings: KeybindingsManager) =>
 			new WrappedPolishedEditor(
 				baseFactory(tui, theme, keybindings),
-				ctx.ui.theme,
+				() => ctx.ui.theme,
 				getCurrentConfig,
 				() => ({
 					modelLabel: state.modelLabel,
@@ -302,7 +307,7 @@ export default function (pi: ExtensionAPI) {
 	const applyConfiguredUi = (ctx: ExtensionContext): ApplyUiResult => {
 		const result: ApplyUiResult = { editorBlocked: false };
 		if (!isTuiContext(ctx)) return result;
-		activeTheme = ctx.ui.theme;
+		activeTheme = () => ctx.ui.theme;
 		if (currentConfig.features.editor) {
 			const currentFactory = ctx.ui.getEditorComponent();
 			const editorMissingOrReplaced = !editorInstalled || !isZentuiEditorFactory(currentFactory);
@@ -321,7 +326,7 @@ export default function (pi: ExtensionAPI) {
 
 	const installUi = (ctx: ExtensionContext) => {
 		if (!isTuiContext(ctx)) return;
-		activeTheme = ctx.ui.theme;
+		activeTheme = () => ctx.ui.theme;
 		uninstallPrototypePatches();
 		footerInstalled = false;
 		editorInstalled = false;
@@ -336,7 +341,10 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const scheduleEditorReconciliation = (ctx: ExtensionContext) => {
-		setTimeout(() => {
+		if (reconciliationHandle) clearTimeout(reconciliationHandle);
+		if (!isTuiContext(ctx)) return;
+		reconciliationHandle = setTimeout(() => {
+			reconciliationHandle = undefined;
 			try {
 				if (!isTuiContext(ctx) || !currentConfig.features.editor) return;
 				const currentFactory = ctx.ui.getEditorComponent();
@@ -351,6 +359,8 @@ export default function (pi: ExtensionAPI) {
 	};
 
 	const cleanupUi = (ctx?: ExtensionContext) => {
+		if (reconciliationHandle) clearTimeout(reconciliationHandle);
+		reconciliationHandle = undefined;
 		uninstallPrototypePatches();
 		stopProjectRefresh();
 		stopTimer();
@@ -450,14 +460,14 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("input", async (event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		const match = event.text.trimStart().match(/^\/skill:([^\s]+)/);
 		if (!match) return;
 		setSkillStatus(match[1] ?? "", "loaded");
 	});
 
 	pi.on("tool_call", async (event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		if (!isToolCallEventType("read", event)) return;
 		const skillName = getSkillNameFromPath(event.input.path);
 		if (!skillName) return;
@@ -466,7 +476,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("before_agent_start", async (_event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		stopTimer();
 		timerStartedAt = Date.now();
 		timerHasError = false;
@@ -475,7 +485,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("tool_execution_end", async (event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!isTuiContext(ctx)) return;
 		const skillName = pendingSkillReads.get(event.toolCallId);
 		if (skillName) {
 			pendingSkillReads.delete(event.toolCallId);
@@ -487,14 +497,14 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("after_provider_response", async (event, ctx) => {
-		if (!ctx.hasUI || event.status < 400) return;
+		if (!isTuiContext(ctx) || event.status < 400) return;
 		timerHasError = true;
 		setTimerLabel("✕");
 	});
 
 	pi.on("agent_start", syncInteractiveState);
 	pi.on("agent_end", async (_event, ctx) => {
-		if (ctx.hasUI) {
+		if (isTuiContext(ctx)) {
 			stopTimer();
 			setTimerLabel(timerHasError ? "✕" : "✓");
 		}

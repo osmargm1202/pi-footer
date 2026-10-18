@@ -150,6 +150,7 @@ describe("mergeConfig", () => {
 				editorThinkingMedium: "thinkingMedium",
 				editorThinkingHigh: "thinkingHigh",
 				editorThinkingXhigh: "thinkingXhigh",
+				editorThinkingMax: "thinkingMax",
 			},
 		});
 
@@ -163,6 +164,7 @@ describe("mergeConfig", () => {
 		expect(config.colors.editorThinkingMedium).toBe("thinkingMedium");
 		expect(config.colors.editorThinkingHigh).toBe("thinkingHigh");
 		expect(config.colors.editorThinkingXhigh).toBe("thinkingXhigh");
+		expect(config.colors.editorThinkingMax).toBe("thinkingMax");
 	});
 
 	it("ignores invalid known values at runtime instead of trusting pi-footer.json", () => {

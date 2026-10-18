@@ -25,7 +25,7 @@ pi-footer brings two popular aesthetics to Pi:
 - Optional ORGM line displays current session title and caveman status, e.g. `Build footer · caveman:full`
 - Skill chips show `/skill:<name>` and `SKILL.md` reads as loading, loaded, or error as skills are used during the session
 - Third-party Pi extension statuses from `ctx.ui.setStatus()` can be shown on the left,
-  middle, or right side, or hidden per status key from `/orgm-footer`
+  middle, or right side, or hidden per status key from `/footer`
 
 ### Editor (Opencode-inspired)
 
@@ -52,7 +52,7 @@ pi-footer brings two popular aesthetics to Pi:
 
 ### Runtime Detection
 
-Detects Starship Nerd Font runtime/language modules, uses the Starship Nerd Font symbols, and keeps Starship-style defaults such as `bold green` for Node.js. By default pi-footer maps those styles through your active Pi theme; switch the Starship/footer color source to `terminal` in `/orgm-footer` if you want your terminal colorscheme to supply the exact ANSI colors.
+Detects Starship Nerd Font runtime/language modules, uses the Starship Nerd Font symbols, and keeps Starship-style defaults such as `bold green` for Node.js. By default pi-footer maps those styles through your active Pi theme; switch the Starship/footer color source to `terminal` in `/footer` if you want your terminal colorscheme to supply the exact ANSI colors.
 
 | Runtime/language | Detection examples                                            |
 | ---------------- | ------------------------------------------------------------- |
@@ -149,7 +149,7 @@ Produces:
 
 - Opencode-style editor UI.
 - Starship-style footer/statusline.
-- `pi-footer` command and `~/.pi/agent/orgm-footer.json` config.
+- `/footer` command and `~/.pi/agent/pi-footer.json` config.
 
 Consumes:
 
@@ -169,22 +169,22 @@ Soft dependencies:
 
 ## Config
 
-User config lives at `~/.pi/agent/orgm-footer.json`. The file is optional: missing or invalid known values fall back to pi-footer defaults, unknown keys are ignored at runtime, and `/orgm-footer` can patch color-source settings, UI feature toggles, and active third-party status placements.
+User config lives at `~/.pi/agent/pi-footer.json` (or under `PI_CODING_AGENT_DIR`). The file is optional: missing or invalid known values fall back to pi-footer defaults, unknown keys are ignored at runtime, and `/footer` can patch color-source settings, UI feature toggles, and active third-party status placements.
 
-The interactive `/orgm-footer` menu is split into three sections. Use `Tab` to switch between `Coloring`, `Features`, and `Status line`.
+The interactive `/footer` menu is split into three sections. Use `Tab` to switch between `Coloring`, `Features`, and `Status line`.
 
 Useful slash-command shortcuts:
 
 ```text
-/orgm-footer editor enable
-/orgm-footer editor disable
-/orgm-footer statusline enable
-/orgm-footer statusline disable
-/orgm-footer editor toggle
-/orgm-footer statusline toggle
-/orgm-footer copy-friendly enable
-/orgm-footer copy-friendly disable
-/orgm-footer copy-friendly toggle
+/footer editor enable
+/footer editor disable
+/footer statusline enable
+/footer statusline disable
+/footer editor toggle
+/footer statusline toggle
+/footer copy-friendly enable
+/footer copy-friendly disable
+/footer copy-friendly toggle
 ```
 
 Default config values — copy this and change any value you want:
@@ -231,7 +231,8 @@ Default config values — copy this and change any value you want:
 		"editorThinkingLow": "thinkingLow",
 		"editorThinkingMedium": "thinkingMedium",
 		"editorThinkingHigh": "thinkingHigh",
-		"editorThinkingXhigh": "thinkingXhigh"
+		"editorThinkingXhigh": "thinkingXhigh",
+		"editorThinkingMax": "thinkingMax"
 	},
 	"colorSources": {
 		"starship": "theme",
@@ -254,9 +255,9 @@ Default config values — copy this and change any value you want:
 - Style values can be Starship/terminal strings (`bold purple`, `fg:202`, `#89b4fa`, `bg:blue fg:bright-green`) or Pi theme tokens (`accent`, `borderMuted`, `thinkingHigh`).
 - `projectRefreshIntervalMs`: project status polling interval; `0` disables polling.
 - `icons`: every shown icon key is configurable; omit any key to use the pi-footer default. `editorPrompt` controls an optional copy-friendly editor prompt glyph; the default is `""` so copy-friendly mode stays rail-free.
-- `colorSources`: `theme` maps styles through Pi theme tokens; `terminal` emits terminal colors. `/orgm-footer` switches these sources; manual JSON controls specific style values.
-- `features`: `editor` enables pi-footer's custom editor, selector borders, and previous-message chrome. `statusLine` enables pi-footer's custom footer/status line. `copyFriendly` hides editor and previous-message rail glyphs so native terminal selection copies less chrome. All three can be changed from `/orgm-footer` or direct slash-command arguments.
-- `extensionStatuses`: controls third-party statuses published by other Pi extensions through `ctx.ui.setStatus()`. `defaultPlacement` and each `placements` value can be `off`, `left`, `middle`, or `right`. `/orgm-footer` lists only statuses that are currently active.
+- `colorSources`: `theme` maps styles through Pi theme tokens; `terminal` emits terminal colors. `/footer` switches these sources; manual JSON controls specific style values.
+- `features`: `editor` enables pi-footer's custom editor, selector borders, and previous-message chrome. `statusLine` enables pi-footer's custom footer/status line. `copyFriendly` hides editor and previous-message rail glyphs so native terminal selection copies less chrome. All three can be changed from `/footer` or direct slash-command arguments.
+- `extensionStatuses`: controls third-party statuses published by other Pi extensions through `ctx.ui.setStatus()`. `defaultPlacement` and each `placements` value can be `off`, `left`, `middle`, or `right`. `/footer` lists only statuses that are currently active.
 - The shown `editor*` values match the default `theme` source. Omit those keys to keep pi-footer's source-aware defaults when switching between `theme` and `terminal`.
 - `editorAccent` styles the active editor rail and previous user-message rail when `features.copyFriendly` is disabled.
 - `editorPrompt` styles the copy-friendly editor prompt glyph. Omit it to use `editorAccent`, then the default accent fallback.
@@ -267,17 +268,58 @@ Tip: when using copy-friendly mode, setting Pi's `editorPaddingX` to `1` in `~/.
 
 ## Requirements
 
-- [Pi](https://pi.dev) coding agent 0.74 or newer
+- [Pi](https://pi.dev) coding agent **1.3.0** is the tested compatibility baseline (older hosts are not revalidated)
 - A [Nerd Font](https://www.nerdfonts.com/) for icons
+
+## Pi 1.3.0 compatibility
+
+Host packages (`pi-ai`, `pi-coding-agent`, `pi-tui`) remain wildcard **peers** at runtime;
+local development pins each to exactly `1.3.0`. Node.js must meet Pi's requirement
+(`>=22.19.0`). No Pi host implementation is bundled.
+
+- Editor, footer, prototype styling, skill tracking, and timers run only in TUI mode
+  (regular and fullscreen). RPC/JSON/print do not start terminal-only work.
+- `/footer` opens the terminal settings menu; `/footer editor disable` and other
+  direct feature commands can also persist preferences outside TUI mode. Config is
+  `<agent-dir>/pi-footer.json`, respecting `PI_CODING_AGENT_DIR`.
+- Theme changes are read by existing components, including wrapped editors. The new
+  `max` thinking level supports `colors.editorThinkingMax` / `thinkingMax`.
+- Shutdown cancels pending editor reconciliation and timers; obsolete in-flight
+  project reads cannot overwrite a replacement session's state.
+- Tests use temporary agent directories, never the user's Pi config.
+
+Previous-message and selector styling still patches Pi component prototypes; this
+is a fragile integration that must be rechecked on future Pi releases. Automated
+rendering/lifecycle checks do not replace real-terminal IME, mouse, selection, and
+visual QA.
 
 ## Development
 
 ```bash
-npm install
+npm ci --ignore-scripts
 npm run verify
 npm run fmt
 npm run pack:check
+npm audit
 ```
+
+CI runs verification, a packaging dry run, and the full dependency audit on Node.js
+22.23.3 and 24, installing with `npm ci --ignore-scripts` on both. Workflow concurrency
+cancels superseded runs for the same ref.
+
+### Dependency security and remaining risks
+
+The reported development-dependency advisories in Vitest / `@vitest/mocker`,
+`nanoid`, `postcss`, and `source-map-js` are resolved. Development now uses Vitest
+5.0.5 with a regenerated lockfile containing patched transitive releases; no
+dependency overrides or audit exclusions are needed. `npm audit` reports zero
+known vulnerabilities for this lockfile. Regression tests check all locked copies
+of the affected packages against their patched-version floors, and CI audits the
+full dependency tree for newly reported advisories.
+
+This does not remove the Pi prototype-patching and real-terminal QA risks described
+above, nor guarantee that future dependency advisories will not be reported. Pi
+host development pins remain at 1.3.0 and runtime peers remain wildcard ranges.
 
 ### Test in Pi
 
